@@ -1,0 +1,70 @@
+##' Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores
+##' The \code{mdsGlobal} is function to generate global MDS plot for multiple pairs
+##' @title Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores
+##' @param acs.value: ACS or ADS scores (ACS is recommended)
+##' @param model.name: a vector of dataset names.
+##' @param sep: a character string to separate the data terms.
+##' @param file: the output file name.
+##' @return A MDS plot of ACS or ADS scores for all DTS's to visualize global distance between each data pair.
+##' @export
+##' @examples
+##' \dontrun{
+##' #mcmc.merge.list from the merge step (see the example in function 'merge')
+##' #ACS_ADS_global from the multi_ACS_ADS_global step (see the example in 'multi_ACS_ADS_global')
+##' dataset.names = c("hb","hs","ht","ha","hi","hl",
+##'                   "mb","ms","mt","ma","mi","ml")
+##' acs.value = c(ACS_ADS_global$ACS)
+##' names(acs.value) = c(sapply(rownames(ACS_ADS_global$ACS),function(x) {
+##' paste(x,rownames(ACS_ADS_global$ACS),sep="_")
+##' }))
+##' mdsGlobal(acs.value,dataset.names,sep="_",file="~/globalMDS.pdf")
+##' }
+
+mdsGlobal <- function(acs.value,model.name,sep="_",file) {
+  ## plot MDS for global ACS
+  ## model.name is a vector of model names
+  M <- length(model.name)
+  if(M<=2){
+    stop("At least three DTS's are required for Multidimensional Scaling plot...")
+  }
+  distF <- ACStransform(acs.value,theta=7)
+  d <- matrix(NA,nrow=M,ncol=M)
+  rownames(d) <- colnames(d) <- model.name
+
+  for(i in 1:(M-1)){
+    for(j in (i+1):M){
+      name1 <- rownames(d)[i]
+      name2 <- rownames(d)[j]
+      d[name1,name2] <- d[name2,name1] <- distF[paste(name1,name2,sep=sep)]
+    }
+  }
+
+  diag(d) <- 0
+  dist <- as.dist(d,upper = TRUE, diag = TRUE)
+  fit <- sammon(d=dist, y= jitter(cmdscale(dist, 2)), k=2) # k is the number of dim
+
+  x <- fit$points[,1]
+  y <- fit$points[,2]
+  xlimit <- ifelse(abs(min(x))>abs(max(x)),abs(min(x)),abs(max(x)))
+  ylimit <- ifelse(abs(min(y))>abs(max(y)),abs(min(y)),abs(max(y)))
+
+  color <- rainbow(M,s=0.5,v=1,alpha=1)
+  pdf(file)
+  p<-ggplot() +
+    ggtitle("Global ACSF plot") +
+    xlab("Coordinate 1") + ylab("Coordinate 2") +
+    xlim(c(-xlimit-0.5,xlimit+0.5)) + ylim(c(-ylimit-0.5,ylimit+0.5)) +
+    geom_point(aes(x, y), color = color  ,size=6) +
+    geom_text_repel(aes(x, y, label = rownames(d),fontface="bold"),size=8) +
+    theme(plot.title = element_text(size = 15, hjust=0.5,face="bold"),
+          axis.text.x = element_text(size = 12),
+          axis.text.y = element_text(size = 12))
+  print(p)
+  dev.off()
+  return(p)
+}
+ACStransform <- function(ACS, theta=7) {
+  trun.ACS <-ifelse(ACS<0,0,ACS)
+  trsf.ACS <- theta*exp(-theta*trun.ACS)
+  return(trsf.ACS)
+}

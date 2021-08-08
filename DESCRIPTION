@@ -1,0 +1,26 @@
+Package: CAMO
+Title: Perform cross-species resemblance analysis
+Version: 1.0
+Date: 2021-01-13
+Author: Tianzhou Ma <tianzhou.ma0105@gmail.com>, Wei Zong <weizong0527@gmail.com>
+Maintainer: Tianzhou Ma <tianzhou.ma0105@gmail.com>
+Description: The package performs cross-species resemblance analysis both globally and at pathway level, and provide several visualization outputs for more biological insight.
+Depends: R (>= 3.5.0), Rcpp (>= 0.12.9), RcppArmadillo, MASS, snowfall, limma,
+        DESeq2, ggplot2, gplots, ConsensusClusterPlus, pathview, gridExtra, grid,
+        org.Hs.eg.db, reticulate, reactome.db, KEGG.db
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    parallel,
+    devtools,
+    KEGGgraph,
+    methods,
+    igraph,
+    Rcpp,
+    RcppArmadillo
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
