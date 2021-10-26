@@ -1176,58 +1176,33 @@ ACS_ADS_DE <- function(ds1,ds2,DEevid1,DEevid2,ACSp,ADSp,cluster=NULL,
 ##########################
 ######    parseXML     ###
 ##########################
-parseRelation <- function(pathwayID, keggSpecies="hsa", binary = T) {
-  orig.path <- getwd()
-  #dir.path <- "parseXML"
-  #if (!file.exists(dir.path)) dir.create(dir.path)
-  #setwd(paste(orig.path,"/",dir.path,sep=""))
-  setwd(orig.path)
-
+parseRelation <- function(pathwayID, keggSpecies="hsa", binary = T, sep = "-") {
   # download xml file
   download.kegg(pathway.id = pathwayID, keggSpecies, kegg.dir = ".", file.type="xml")
   # generate relation matrix
-  pathName <- unlist(as.list(KEGGPATHID2NAME)[pathwayID])
-  if(binary == TRUE){
-    # only 0/1
-    relation.mat <- parseBinaryXML(pathName, paste(getwd(), "/hsa", pathwayID,".xml",sep = ""))
-  }
-  else{
-    # count subtypes of relations
-    relation.mat <- parseXML(pathName, paste0(getwd(),"/hsa", pathwayID,".xml",sep = ""))
-  }
+  pathName = unlist(as.list(KEGGPATHID2NAME)[pathwayID])
 
-  #if(dim(relation.mat)[1]!=0){
-  #rownames(relation.mat) <- colnames(relation.mat) <- gsub("hsa:", "", rownames(relation.mat))
-  #}
-  file.remove(paste0(getwd(),"/hsa", pathwayID,".xml",sep = ""))
-  setwd(orig.path)
-  return(relation.mat)
-}
+  xmlFile = paste0(getwd(), "/",keggSpecies, pathwayID,".xml")
+  pathway = KEGGgraph::parseKGML(xmlFile)
+  pathway = KEGGgraph::splitKEGGgroup(pathway)
 
-parseBinaryXML <- function(pathName, xmlFile){
-  pathway <- KEGGgraph::parseKGML(xmlFile)
-  pathway <- KEGGgraph::splitKEGGgroup(pathway)
-
-  entries <- KEGGgraph::nodes(pathway)
-  types <- sapply(entries, getType)
-  relations <- unique(KEGGgraph::edges(pathway)) ## to avoid duplicated edges
-  relationNum <- length(relations)
-  entryNames <- as.list(sapply(entries, getName))
+  entries = KEGGgraph::nodes(pathway)
+  types = sapply(entries, getType)
+  relations = unique(KEGGgraph::edges(pathway)) ## to avoid duplicated edges
+  relationNum = length(relations)
+  entryNames = as.list(sapply(entries, getName))
   if(any(types == "group") || any(types=="map")){
-    keep <- !(types %in% c("group","map"))
-    entryNames <- entryNames[keep]
+    entryNames = entryNames[!(types %in% c("group","map"))]
   }
-  entryIds <- names(entryNames)
-  # names(geneNames) <- xml_attr(genes, "id")
-  entryNames <- lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse="_"))
-  #entryNames <- lapply(1:length(entryNames), function(j) gsub("...:", "", entryNames[[j]]))
-  names(entryNames) <- entryIds
+  entryIds = names(entryNames)
+  entryNames = lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse=sep))
+  names(entryNames) = entryIds
 
-  entryNames.unique <- unique(entryNames)
-  entryNum <- length(entryNames.unique)
+  entryNames.unique = unique(entryNames)
+  entryNum = length(entryNames.unique)
 
-  relation.mat <- matrix(0, entryNum, entryNum)
-  rownames(relation.mat) <- colnames(relation.mat) <- entryNames.unique
+  relation.mat = matrix(0, entryNum, entryNum)
+  rownames(relation.mat) = colnames(relation.mat) = entryNames.unique
 
   ## if no relation edge, just return
   if(relationNum == 0){
@@ -1235,8 +1210,8 @@ parseBinaryXML <- function(pathName, xmlFile){
     return(relation.mat)
   }
 
-  entry1 <- getEntryID(relations)[,1]
-  entry2 <- getEntryID(relations)[,2]
+  entry1 = getEntryID(relations)[,1]
+  entry2 = getEntryID(relations)[,2]
   for(i in 1:length(relations)){
     if(entry1[i] %in% names(entryNames) && entry2[i] %in% names(entryNames)){
       relation.mat[entryNames[[entry1[i]]],entryNames[[entry2[i]]]]=1
@@ -1245,58 +1220,8 @@ parseBinaryXML <- function(pathName, xmlFile){
       print(paste("relation not included:",entry1[i], entry2[i], sep=" "))
     }
   }
-  #rownames(relation.mat) <- colnames(relation.mat) <- lapply(1:geneNum, function(i) xml_attrs(genes[[i]])[["name"]])
 
-  #save(relation.mat, file=paste(pathName,".RData",sep=""))
-  return(relation.mat)
-}
-
-parseXML <- function(pathName, xmlFile){
-  pathway <- KEGGgraph::parseKGML(xmlFile)
-  pathway <- KEGGgraph::splitKEGGgroup(pathway)
-  # entries <- xml_find_all(xml, "//entry")
-  # genes <- entries[xml_attr(entries,"type")=="gene"]
-  # groups <- entries[xml_attr(entries,"type")=="group"]
-  # relations <- xml_find_all(xml, "//relation")
-
-  entries <- KEGGgraph::nodes(pathway)
-  types <- sapply(entries, getType)
-  relations <- unique(KEGGgraph::edges(pathway)) ## to avoid duplicated edges
-
-  # groupNum <- length(groups)
-  # entryNum <- length(entries)
-  relationNum <- length(relations)
-  entryNames <- as.list(sapply(entries, getName))
-  if(any(types == "group") || any(types=="map")){
-    keep <- !(types %in% c("group","map"))
-    entryNames <- entryNames[keep]
-  }
-  entryIds <- names(entryNames)
-  # names(geneNames) <- xml_attr(genes, "id")
-  entryNames <- lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse="_"))
-  #entryNames <- lapply(1:length(entryNames), function(j) gsub("...:", "", entryNames[[j]]))
-  names(entryNames) <- entryIds
-
-  entryNames.unique <- unique(entryNames)
-  entryNum <- length(entryNames.unique)
-  entry1 <- getEntryID(relations)[,1]
-  entry2 <- getEntryID(relations)[,2]
-
-  relation.mat <- matrix(0, entryNum, entryNum)
-  rownames(relation.mat) <- colnames(relation.mat) <- entryNames.unique
-  #rownames(relation.mat) <- colnames(relation.mat) <- lapply(1:geneNum, function(i) xml_attrs(genes[[i]])[["name"]])
-  #rownames(relation.mat) <- colnames(relation.mat) <- unique(colnames(relation.mat))
-  for(i in 1:length(relations)){
-    if(entry1[i] %in% names(entryNames) && entry2[i] %in% names(entryNames)){
-      relation.mat[entryNames[[entry1[i]]],entryNames[[entry2[i]]]]=relation.mat[entryNames[[entry1[i]]],entryNames[[entry2[i]]]]+length(getSubtype(relations[[i]]))
-    }
-    else{
-      print(paste("relation not included:",entry1[i], entry2[i], sep=" "))
-    }
-  }
-  #rownames(relation.mat) <- colnames(relation.mat) <- lapply(1:geneNum, function(i) xml_attrs(genes[[i]])[["name"]])
-
-  #save(relation.mat, file=paste(pathName,".RData",sep=""))
+  file.remove(xmlFile)
   return(relation.mat)
 }
 

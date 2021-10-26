@@ -7,7 +7,7 @@ Maintainer: Tianzhou Ma <tianzhou.ma0105@gmail.com>
 Description: The package performs cross-species resemblance analysis both globally and at pathway level, and provide several visualization outputs for more biological insight.
 Depends: R (>= 3.5.0), Rcpp (>= 0.12.9), RcppArmadillo, MASS, snowfall, limma,
         DESeq2, ggplot2, gplots, ConsensusClusterPlus, pathview, gridExtra, grid,
-        org.Hs.eg.db, reticulate, reactome.db, KEGG.db
+        reticulate, reactome.db
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -20,7 +20,12 @@ Imports:
     methods,
     igraph,
     Rcpp,
-    RcppArmadillo
+    RcppArmadillo,
+    org.Hs.eg.db,
+    org.Mm.eg.db, 
+    org.Rn.eg.db,
+    org.Ce.eg.db, 
+    org.Dm.eg.db
 LinkingTo: 
     Rcpp,
     RcppArmadillo

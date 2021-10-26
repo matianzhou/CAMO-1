@@ -22,8 +22,10 @@ multiOutput(
   ViewPairSelect = NULL,
   kegg.species = "hsa",
   KEGG.genes.entrezID = NULL,
+  KEGG.pathID2name = NULL,
   reactome.species = "HSA",
-  Reactome.genes.topologyGtype = NULL
+  Reactome.genes.topologyGtype = NULL,
+  Reactome.pathID2name = NULL
 )
 }
 \arguments{
@@ -77,10 +79,16 @@ considered under default (may take a while).}
 \item{KEGG.genes.entrezID:}{a data frame which maps gene names in mcmc.merge.list (first column) to
 Entrez IDs (second column). Only required for non-human genes after merging. For "keggView" only.}
 
+\item{KEGG.pathID2name:}{a list where each element is a KEGG pathway name with correponding pathway ID
+as its name. ID will be retrieved from KEGGREST if this is NULL.}
+
 \item{reactome.species:}{Reactome species abbreviation. For "reactomeView" only. Default is "HSA".}
 
 \item{Reactome.genes.topologyGtype:}{a data frame which maps gene names in mcmc.merge.list (first
 column) to gene name types in Reactome topology (second column). For "reactomeView" only.}
+
+\item{Reactome.pathID2name:}{a list where each element is a Reactome pathway name with correponding
+pathway ID as its name. ID will be retrieved from reactome.db if this is NULL.}
 }
 \value{
 stored output in created folders.

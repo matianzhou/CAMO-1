@@ -13,7 +13,7 @@
 ##' probabilities that each model pair been clustered together in pathways in each pathway cluster),
 ##' "mdsModel"(model MDS plot),"clustModel" (model clustering output), "genePM" (heatmap of gene
 ##' posterior mean), "keggView" (KEGG pathway topology, default is human - hsa, for other species,
-##' KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.genes.entrezID'),"reactomeView"
+##' KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),"reactomeView"
 ##' (Reactome pathway topology, default is human - HSA, for other species, Reactome organism name needs
 ##' to be provided as "reactome.species"). In single pair case (2 DTS's), clustering analysis is not
 ##' applicable and only 'genePM','keggView' can be generated. For details, please refer to manuscript.
@@ -36,11 +36,15 @@
 ##' considered under default (may take a while).
 ##' @param comemberProb_cut: probability below this cut will be colored blue in comembership heatmaps.
 ##' @param kegg.species: KEGG species abbreviation. For "keggView" only. Default is "hsa".
-##' @param KEGG.genes.entrezID: a data frame which maps gene names in mcmc.merge.list (first column) to
+##' @param KEGG.dataG2EntrezID: a data frame which maps gene names in mcmc.merge.list (first column) to
 ##' Entrez IDs (second column). Only required for non-human genes after merging. For "keggView" only.
+##' @param KEGG.pathID2name: a list where each element is a KEGG pathway name with correponding pathway ID
+##' as its name. ID will be retrieved from KEGGREST if this is NULL.
 ##' @param reactome.species: Reactome species abbreviation. For "reactomeView" only. Default is "HSA".
-##' @param Reactome.genes.topologyGtype: a data frame which maps gene names in mcmc.merge.list (first
+##' @param EntrezIDReactome.dataG2TopologyGtype: a data frame which maps gene names in mcmc.merge.list (first
 ##' column) to gene name types in Reactome topology (second column). For "reactomeView" only.
+##' @param Reactome.pathID2name: a list where each element is a Reactome pathway name with correponding
+##' pathway ID as its name. ID will be retrieved from reactome.db if this is NULL.
 ##'
 ##' @return stored output in created folders.
 ##' @export
@@ -62,12 +66,11 @@
 ##'            hashtb=hashtb,pathways=pathways,optK = K,thres = 0.2)
 ##' }
 multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
-                        output=c("clustPathway","mdsModel","clustModel","genePM","keggView","reactomeView",
-                                 "comemberPlot"),
+                        output=c("clustPathway","mdsModel","clustModel","genePM","keggView","reactomeView"),
                         optK=NULL,sil_cut=0.1,ADS_cluster=FALSE,hashtb=NULL,pathways=NULL,keywords_cut=0.05,
                         text.permutation = "all",comemberProb_cut=0.7,
-                        ViewPairSelect = NULL,kegg.species="hsa",KEGG.genes.entrezID=NULL,
-                        reactome.species="HSA",Reactome.genes.topologyGtype=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
+                        ViewPairSelect = NULL,kegg.species="hsa",KEGG.dataGisEntrezID=FALSE,KEGG.dataG2EntrezID=NULL,KEGG.pathID2name=NULL,
+                        reactome.species="HSA",EntrezIDReactome.dataG2TopologyGtype=NULL,Reactome.pathID2name=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
 
   ### Multiple pairs output including the following outputs:
   ## pathway clustering (including consensus clust, heatmap, mds, pathway text mining)
@@ -76,10 +79,6 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
 
   if(length(output)==0 || is.null(output)){
     stop("at least one type of output has to be chosen")
-  }
-
-  if(("comemberPlot" %in% output) & (!"clustPathway" %in% output)){
-    print("comemberPlot is depend on pathway clustering results, can not generate without 'clustPathway'...")
   }
 
   orig.path <- getwd()
@@ -94,11 +93,10 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
     ASpvalue.mat = ACS_ADS_pathway$ACSpvalue.mat
   }
 
-
   M <- length(mcmc.merge.list)
   P <- ncol(AS.mat)
 
-  if( (M<=2) & (length(intersect(output,c("clustPathway","mdsModel","clustModel","comemberPlot"))) != 0)){
+  if( (M<=2) & (length(intersect(output,c("clustPathway","mdsModel","clustModel"))) != 0)){
     print("MDS and clustering are not applicable to 2 DTS's case, removed from 'output'...")
     output = intersect(output,c('genePM','keggView'))
   }
@@ -142,96 +140,91 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                               cluster.assign=cluster.assign,scatter.index=scatter.index,plot.path=NULL)
 
 
-    if("comemberPlot" %in% output){
-      print("Construct comembership matrix...")
-      dir.path <- "comemberPlot"
-      if (!file.exists(paste(orig.path,"/",dir.path,sep=""))) dir.create(paste(orig.path,"/",dir.path,sep=""))
-      setwd(paste(orig.path,"/",dir.path,sep=""))
+    print("Construct comembership matrix...")
+    dir.path <- "comemberPlot"
+    if (!file.exists(paste(orig.path,"/",dir.path,sep=""))) dir.create(paste(orig.path,"/",dir.path,sep=""))
+    setwd(paste(orig.path,"/",dir.path,sep=""))
 
-      model.cluster.result <- vector("list",length=K)
-      names(model.cluster.result) <- rownames(ASpvalue.mat)
+    model.cluster.result <- vector("list",length=K)
+    names(model.cluster.result) <- rownames(ASpvalue.mat)
 
-      for(k in 1:K) {
-        model.cluster.result[[k]] <- SA_algo(unlist(c(ASpvalue.mat[k,])),dataset.names,sep="_")
-      }
-      pathway.cluster.assign = cluster.assign
-      pathway.cluster.assign[scatter.index] = "scatter"
+    for(k in 1:K) {
+      model.cluster.result[[k]] <- SA_algo(unlist(c(ASpvalue.mat[k,])),dataset.names,sep="_")
+    }
+    pathway.cluster.assign = cluster.assign
+    pathway.cluster.assign[scatter.index] = "scatter"
 
-      if(is.null(scatter.index)){
-        Cvec = 1:optK
-      }else{
-        Cvec = c(1:optK,"scatter")
-      }
+    if(is.null(scatter.index)){
+      Cvec = 1:optK
+    }else{
+      Cvec = c(1:optK,"scatter")
+    }
 
-      comember.list <- vector("list",length=length(Cvec))
-      for (c in 1:length(Cvec)){
-        select.pathways <- names(pathway.cluster.assign)[pathway.cluster.assign==Cvec[c]]
-        denom <- length(select.pathways)
-        model.result.pathways <- matrix(unlist(model.cluster.result[select.pathways]),nrow=denom,ncol=M,byrow =T )
-        rownames(model.result.pathways) <- select.pathways
-        colnames(model.result.pathways) <- dataset.names
-        comember.mat <- matrix(1,M,M)
-        rownames(comember.mat) <- colnames(comember.mat) <- dataset.names
-        for (i in 1:(M-1)){
-          for (j in (i+1):M){
-            if (denom==1){
-              comember.mat[j,i] = 1
-            }else{
-              model1 <- dataset.names[i]
-              model2 <- dataset.names[j]
-              twomodel.result <- model.result.pathways[,c(model1,model2)]
-              comember.mat[j,i] <- comember.mat[i,j] <- sum(apply(twomodel.result,1,function(x) x[1]==x[2]))/denom
-            }
+    comember.list <- vector("list",length=length(Cvec))
+    for (c in 1:length(Cvec)){
+      select.pathways <- names(pathway.cluster.assign)[pathway.cluster.assign==Cvec[c]]
+      denom <- length(select.pathways)
+      model.result.pathways <- matrix(unlist(model.cluster.result[select.pathways]),nrow=denom,ncol=M,byrow =T )
+      rownames(model.result.pathways) <- select.pathways
+      colnames(model.result.pathways) <- dataset.names
+      comember.mat <- matrix(1,M,M)
+      rownames(comember.mat) <- colnames(comember.mat) <- dataset.names
+      for (i in 1:(M-1)){
+        for (j in (i+1):M){
+          if (denom==1){
+            comember.mat[j,i] = 1
+          }else{
+            model1 <- dataset.names[i]
+            model2 <- dataset.names[j]
+            twomodel.result <- model.result.pathways[,c(model1,model2)]
+            comember.mat[j,i] <- comember.mat[i,j] <- sum(apply(twomodel.result,1,function(x) x[1]==x[2]))/denom
           }
         }
-        comember.list[[c]] <- comember.mat
       }
-      names(comember.list) = Cvec
-      save(comember.list,file="comember.list.RData")
+      comember.list[[c]] <- comember.mat
+    }
+    names(comember.list) = Cvec
+    save(comember.list,file="comember.list.RData")
 
-      #1. thresholding:
-      threshold = comemberProb_cut
+    #1. thresholding:
+    threshold = comemberProb_cut
 
-      mat.thres <- function(mat, threshold){
-        mat[which(mat <= threshold)] <- 0
-        return(mat)
-      }
+    mat.thres <- function(mat, threshold){
+      mat[which(mat <= threshold)] <- 0
+      return(mat)
+    }
 
-      #2. matrix multiplication
+    #2. matrix multiplication
 
+    for(i in 1:length(comember.list)){
+      mat <- comember.list[[i]]
 
-      source_url("https://raw.githubusercontent.com/obigriffith/biostar-tutorials/master/Heatmaps/heatmap.3.R")
+      par(font.main=2)
+      par(font.axis=2)
+      par(xpd=FALSE)
 
-      for(i in 1:length(comember.list)){
-        mat <- comember.list[[i]]
+      #thresholding
 
-        par(font.main=2)
-        par(font.axis=2)
-        par(xpd=FALSE)
+      thres.mat <- mat.thres(mat,threshold)
 
-        #thresholding
-
-        thres.mat <- mat.thres(mat,threshold)
-
-        pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
+      pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
 
 
-        hm <- heatmap.3(thres.mat,
-                        main=NULL,
-                        cexCol=1.2,cexRow=1.2,
-                        colsep=1:nrow(mat),
-                        rowsep=1:ncol(mat),
-                        sepwidth=c(0.02, 0.02),  # width of the borders
-                        sepcolor='black',
-                        symbreaks=T,key=T, keysize=1,symkey=F,
-                        dendrogram=c('none'),density.info="none",
-                        trace="none",Rowv=T,Colv=T,symm=F,
-                        #srtCol=50,
-                        col=bluered,breaks=seq(0,1,by=0.01),
-                        margins=c(12,14))
+      hm <- heatmap.3(thres.mat,
+                      main=NULL,
+                      cexCol=1.2,cexRow=1.2,
+                      colsep=1:nrow(mat),
+                      rowsep=1:ncol(mat),
+                      sepwidth=c(0.02, 0.02),  # width of the borders
+                      sepcolor='black',
+                      symbreaks=T,key=T, keysize=1,symkey=F,
+                      dendrogram=c('none'),density.info="none",
+                      trace="none",Rowv=T,Colv=T,symm=F,
+                      #srtCol=50,
+                      col=bluered,breaks=seq(0,1,by=0.01),
+                      margins=c(12,14))
 
-        dev.off()
-      }
+      dev.off()
     }
   }
   setwd(orig.path)
@@ -292,13 +285,17 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
     if(sum(grepl("KEGG",pathway.name))==0) {
       warning("No KEGG pathways")
     } else{
-      dir.path <- "keggView"
-      if (!file.exists(dir.path)) dir.create(dir.path)
-      setwd(paste(orig.path,"/",dir.path,sep=""))
+      #dir.path <- "keggView"
+      #if (!file.exists(dir.path)) dir.create(dir.path)
+      #setwd(paste(orig.path,"/",dir.path,sep=""))
 
       map.ls = as.list(as.list(org.Hs.egALIAS2EG))
 
-      kegg_id_name = lapply(keggList("pathway",kegg.species),function(x) strsplit(x," - ")[[1]][-length(strsplit(x," - ")[[1]])])
+      if(is.null(KEGG.pathID2name)){
+        message("Retrieve KEGG pathway IDs from KEGGREST...")
+        KEGG.pathID2name = lapply(keggList("pathway",kegg.species),function(x) strsplit(x," - ")[[1]][-length(strsplit(x," - ")[[1]])])
+        names(KEGG.pathID2name) = gsub("path:","",names(KEGG.pathID2name))
+      }
 
       if(is.null(ViewPairSelect)){
         data.pair = combn(dataset.names,2)
@@ -310,44 +307,118 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
       for(k in 1:K_KEGG){
         print(paste("keggView",k,sep=":"))
         keggk.name = select.kegg.path.name[k]
-        for (i in 1:ncol(data.pair)) {
-          dat1.name = data.pair[1,i]
-          dat2.name = data.pair[2,i]
-          dat1 = mcmc.merge.list[[dat1.name]]
-          dat2 = mcmc.merge.list[[dat2.name]]
-          overlap.genes <- intersect(rownames(dat1),select.pathway.list[[keggk.name]])
-          signPM.mat <- cbind(apply(dat1[overlap.genes,],1,mean),
-                              apply(dat2[overlap.genes,],1,mean))
-          colnames(signPM.mat) <- c(dat1.name,dat2.name)
+        keggk.name.clean = gsub("KEGG ","",keggk.name)
+        keggk.name0 = gsub(" / ","_",keggk.name,fixed = T)
 
+        pathwayID = gsub(kegg.species,"",names(KEGG.pathID2name)[which(KEGG.pathID2name == keggk.name.clean)])
+        if(length(pathwayID) == 0){
+          print(paste0("No KEGG pathway ID found for ",keggk.name,", skipped. Please check R package 'KEGGREST' for correct pathway name."))
+        }else{
+          dir.path <- paste0(orig.path,"/keggView/", keggk.name0)
+          if (!file.exists(dir.path)) dir.create(dir.path,recursive = T)
+          setwd(dir.path)
+          for (i in 1:ncol(data.pair)) {
+            dat1.name = data.pair[1,i]
+            dat2.name = data.pair[2,i]
+            dat1 = mcmc.merge.list[[dat1.name]]
+            dat2 = mcmc.merge.list[[dat2.name]]
+            overlap.genes <- intersect(rownames(dat1),select.pathway.list[[keggk.name]])
+            signPM.mat <- cbind(apply(dat1[overlap.genes,],1,mean),
+                                apply(dat2[overlap.genes,],1,mean))
+            colnames(signPM.mat) <- c(dat1.name,dat2.name)
+            std.genes <- rownames(signPM.mat)
+            if(KEGG.dataGisEntrezID == TRUE){
+              message("'KEGG.dataGisEntrezID == TRUE', gene names are used for KEGG pathview directly.")
 
-          std.genes <- rownames(signPM.mat)
-          if(is.null(KEGG.genes.entrezID)){
-            rownames(signPM.mat) = sapply(std.genes,function(g) map.ls[[g]][[1]])
-          }else{
-            entrezID = KEGG.genes.entrezID[match(std.genes,KEGG.genes.entrezID[,1]),2]
-            na.index = which(is.na(entrezID))
-            if(length(na.index != 0)){
-              entrezID = entrezID[-na.index]
-              signPM.mat = signPM.mat[-na.index,]
+            }else if(!is.null(KEGG.dataG2EntrezID)){
+              entrezID = KEGG.dataG2EntrezID[match(rownames(signPM.mat),KEGG.dataG2EntrezID[,1]),2]
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by the provided data frame KEGG.dataG2EntrezID.")
+
+            }else if(kegg.species == "hsa"){
+              map.ls = as.list(as.list(org.Hs.eg.db::org.Hs.egALIAS2EG))
+              entrezID = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by org.Hs.eg.db::org.Hs.egALIAS2EG.")
+
+            }else if(kegg.species == "mmu"){
+              map.ls = as.list(as.list(org.Mm.eg.db::org.Mm.egALIAS2EG))
+              entrezID = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by org.Hs.eg.db::org.Mm.egALIAS2EG.")
+
+            }else if(kegg.species == "rno"){
+              map.ls = as.list(as.list(org.Rn.eg.db::org.Rn.egALIAS2EG))
+              entrezID = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by org.Hs.eg.db::org.Rn.egALIAS2EG")
+
+            }else if(kegg.species == "cel"){
+              map.ls = as.list(as.list(org.Ce.eg.db::org.Ce.egALIAS2EG))
+              entrezID = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by org.Hs.eg.db::org.Ce.egALIAS2EG")
+
+            }else if(kegg.species == "dme"){
+              map.ls = as.list(as.list(org.Dm.eg.db::org.Dm.egALIAS2EG))
+              entrezID = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+              rownames(signPM.mat) = entrezID
+
+              message("Gene names are converted to EntrezID by org.Hs.eg.db::org.Dm.egALIAS2EG")
+
             }
-            rownames(signPM.mat) = entrezID
+
+            #Average DE genes in each node
+            download.kegg(pathway.id = pathwayID, kegg.species, kegg.dir = ".", file.type="xml")
+            parsePathway = KEGGgraph::parseKGML(paste(getwd(), "/",kegg.species, pathwayID,".xml",sep = ""))
+            parsePathway = KEGGgraph::splitKEGGgroup(parsePathway)
+
+            entries = KEGGgraph::nodes(parsePathway)
+            types = sapply(entries, getType)
+            entryNames = as.list(sapply(entries, getName))
+            if(any(types == "group") || any(types=="map")){
+              entryNames = entryNames[!(types %in% c("group","map"))]
+            }
+            entryIds = names(entryNames)
+            entryNames = lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse="_"))
+            names(entryNames) = entryIds
+
+            entryNames.unique = unique(entryNames)
+
+            xmlG = gsub(paste0(kegg.species,":"),"",unlist(entryNames.unique))
+            xmlG.ls = lapply(xmlG, function(x){
+              strsplit(x,"_")[[1]]
+            })
+
+            mergePMls = lapply(1:length(xmlG.ls), function(x){
+              genes = xmlG.ls[[x]]
+              cmG = intersect(rownames(signPM.mat),genes)
+              if(length(cmG) !=0){
+                sub.signPM.mat = matrix(signPM.mat[cmG,],ncol = 2)
+                avgPM = apply(sub.signPM.mat, 2, mean)
+                return(avgPM)
+              }
+            })
+            names(mergePMls) = xmlG
+            mergePMmat = do.call(rbind,mergePMls)
+
+            row.names(mergePMmat) = sapply(row.names(mergePMmat), function(x) strsplit(x,"_")[[1]][1])
+
+            res = pathview(gene.data = mergePMmat, pathway.id = pathwayID,
+                           species = kegg.species, out.suffix = "", kegg.native = T,
+                           key.pos = "bottomright", map.null=T,cex = 0.15)
+
+            keggID = paste(kegg.species,pathwayID,sep="")
+            file.rename(paste(keggID,"..multi.png",sep=""),
+                        paste(keggk.name0,"_",dat1.name,"_",dat2.name,".png",sep=""))
+            file.remove(paste(keggID,".xml",sep=""))
+            file.remove(paste(keggID,".png",sep=""))
           }
-
-          keggk.name.clean = gsub("KEGG ","",keggk.name)
-          pathwayID = gsub(paste0("path:",kegg.species),"",names(kegg_id_name)[which(kegg_id_name == keggk.name.clean)])
-
-          res = pathview(gene.data = signPM.mat, pathway.id = pathwayID,
-                         species = kegg.species, out.suffix = "", kegg.native = T,
-                         key.pos = "bottomright", map.null=T,cex = 0.15)
-
-
-          keggID = paste(kegg.species,pathwayID,sep="")
-          keggk.name0 = gsub(" / ","_",keggk.name,fixed = T)
-          file.rename(paste(keggID,"..multi.png",sep=""),
-                      paste(keggk.name0,"_",dat1.name,"_",dat2.name,".png",sep=""))
-          file.remove(paste(keggID,".xml",sep=""))
-          file.remove(paste(keggID,".png",sep=""))
         }
       }
     }
@@ -358,19 +429,13 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
     if(sum(grepl("Reactome",pathway.name))==0) {
       warning("No Reactome pathways")
     } else{
-      dir.path <- "reactomeView"
-      if (!file.exists(dir.path)) dir.create(dir.path)
-      setwd(paste(orig.path,"/",dir.path,sep=""))
-
       source_python(system.file("ImageProcess.py", package = "CAMO"))
-      file.copy(from = system.file("pallete.jpeg", package = "CAMO"),
-                to   = getwd())
 
       #genes in mcmc.merge.list, pathway.list should both be the type shown on Reactome topology
-      if(!is.null(Reactome.genes.topologyGtype)){
+      if(!is.null(EntrezIDReactome.dataG2TopologyGtype)){
         #match mcmc.merge.list genes
         mcmcG = row.names(mcmc.merge.list[[1]])
-        mcmcG.topology = Reactome.genes.topologyGtype[match(mcmcG,Reactome.genes.topologyGtype[,1]),2]
+        mcmcG.topology = EntrezIDReactome.dataG2TopologyGtype[match(mcmcG,EntrezIDReactome.dataG2TopologyGtype[,1]),2]
         na.index = which(is.na(mcmcG.topology))
         if(length(na.index) !=0){
           mcmcG.topology.rmna = mcmcG.topology[-na.index]
@@ -387,80 +452,91 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
         }
         #match pathway genes
         select.pathway.list.topology = lapply(select.pathway.list, function(x){
-          pathwayG.topology = Reactome.genes.topologyGtype[match(x,Reactome.genes.topologyGtype[,1]),2]
+          pathwayG.topology = EntrezIDReactome.dataG2TopologyGtype[match(x,EntrezIDReactome.dataG2TopologyGtype[,1]),2]
           pathwayG.topology = pathwayG.topology[-which(is.na(pathwayG.topology)|pathwayG.topology == "")]
           return(pathwayG.topology)
         })
       }else{
+        message("Reactome.dataG2TopologyGtype is not provided, gene names are used to hightlight genes Reactome topology plots directly.")
+
         mcmc.merge.list.topology = mcmc.merge.list
         select.pathway.list.topology = select.pathway.list
       }
 
-      pathid2name = as.list(reactomePATHID2NAME)
-      pathid2name_species = pathid2name[grep(reactome.species,names(pathid2name))]
-      pathid2name_species_clean = lapply(pathid2name_species, function(x) strsplit(x,": ")[[1]][2])
+      if(is.null(Reactome.pathID2name)){
+        message("Retrieve Reactome pathway IDs from KEGGREST...")
+
+        pathid2name = as.list(reactomePATHID2NAME)
+        pathid2name_species = pathid2name[grep(reactome.species,names(pathid2name))]
+        Reactome.pathID2name = lapply(pathid2name_species, function(x) strsplit(x,": ")[[1]][2])
+      }
 
       pathway.name.topology = names(select.pathway.list.topology)
       select.path.name = gsub("Reactome ","",pathway.name.topology[grep("Reactome",pathway.name.topology)])
-      select.path.name.intersect = intersect(pathid2name_species_clean,select.path.name)
-      select.path.id.intersect = names(pathid2name_species_clean)[match(select.path.name.intersect,pathid2name_species_clean)]
-      print(paste0("Matched ",length(select.path.id.intersect)," Reactome pathway IDs"))
+      select.path.name.intersect = intersect(Reactome.pathID2name,select.path.name)
+      select.path.id.intersect = names(Reactome.pathID2name)[match(select.path.name.intersect,Reactome.pathID2name)]
 
-      select.path.name.intersect2 = paste0("Reactome ",select.path.name.intersect)
-      reactome.index = match(select.path.name.intersect2, pathway.name.topology)
-      reactome.df = data.frame(ID = as.character(select.path.id.intersect),
-                               Genes = as.character(sapply(select.pathway.list.topology[select.path.name.intersect2], function(x) paste(x,collapse = " "))))
-
-      if(is.null(ViewPairSelect)){
-        data.pair = combn(dataset.names,2)
+      if(length(select.path.id.intersect) == 0){
+        print(paste0("No matched Reactome pathway IDs for pathways provided. Please check R package 'reactome.db' for correct pathway name."))
       }else{
-        data.pair = combn(ViewPairSelect,2)
-      }
-      for(i in 1:length(select.path.id.intersect)){
-        print(paste("reactomeView",i,sep=":"))
-        aID = select.path.id.intersect[i]
-        aname = select.path.name.intersect2[i]
-        if(grepl(":|/", aname)) {
-          aname1 = gsub(":|/", "-", aname)
-        } else {
-          aname1 = aname
+        print(paste0("Matched ",length(select.path.id.intersect)," Reactome pathway IDs"))
+
+        select.path.name.intersect2 = paste0("Reactome ",select.path.name.intersect)
+        reactome.index = match(select.path.name.intersect2, pathway.name.topology)
+        reactome.df = data.frame(ID = as.character(select.path.id.intersect),
+                                 Genes = as.character(sapply(select.pathway.list.topology[select.path.name.intersect2], function(x) paste(x,collapse = " "))))
+
+        if(is.null(ViewPairSelect)){
+          data.pair = combn(dataset.names,2)
+        }else{
+          data.pair = combn(ViewPairSelect,2)
         }
-        dir.path <- paste0("reactomeView/", aname1)
-        if (!file.exists(dir.path)) dir.create(dir.path)
-        setwd(paste(orig.path,"/",dir.path,sep=""))
-        file.copy(from = system.file("pallete.jpeg", package = "CAMO"),
-                  to   = getwd())
-        for (j in 1:ncol(data.pair)) {
-          tryCatch({
-            #aID = select.path.id.intersect[i]
-            #aname = select.path.name.intersect2[i]
+        for(i in 1:length(select.path.id.intersect)){
+          print(paste("reactomeView",i,sep=":"))
+          aID = select.path.id.intersect[i]
+          aname = select.path.name.intersect2[i]
+          if(grepl("/|:", aname)) {
+            aname1 = gsub("/|:", "", aname)
+          } else {
+            aname1 = aname
+          }
+          dir.path = paste0(orig.path,"/reactomeView/", aname1)
+          if (!file.exists(dir.path)) dir.create(dir.path,recursive = T)
+          setwd(paste(orig.path,"/",dir.path,sep=""))
+          file.copy(from = system.file("pallete.jpeg", package = "CAMO"),
+                    to   = getwd())
+          for (j in 1:ncol(data.pair)) {
+            tryCatch({
+              # aID = select.path.id.intersect[i]
+              # aname = select.path.name.intersect2[i]
+              dat1.name = data.pair[1,j]
+              dat2.name = data.pair[2,j]
+              d1 = dataset.names[dat1.name]
+              d2 = dataset.names[dat2.name]
+              dat1 = mcmc.merge.list.topology[[dat1.name]]
+              dat2 = mcmc.merge.list.topology[[dat2.name]]
+              print(paste0(aID," ",d1," ",d2))
+              overlap.genes0 = intersect(rownames(dat1),select.pathway.list.topology[[aname]])
+              if(length(overlap.genes0) != 0){
+                signPM.mat = cbind(apply(dat1[overlap.genes0,],1,mean),
+                                   apply(dat2[overlap.genes0,],1,mean))
+                signPM = data.frame(Genes = row.names(signPM.mat),signPM.mat)
+                colnames(signPM) = c("Genes","dat1","dat2")
 
-            dat1.name = data.pair[1,j]
-            dat2.name = data.pair[2,j]
-            dat1 = mcmc.merge.list.topology[[dat1.name]]
-            dat2 = mcmc.merge.list.topology[[dat2.name]]
-            print(paste0(aID," ",dat1.name," ",dat2.name))
-            overlap.genes0 = intersect(rownames(dat1),select.pathway.list.topology[[aname]])
-            if(length(overlap.genes0) != 0){
-              signPM.mat = cbind(apply(dat1[overlap.genes0,],1,mean),
-                                 apply(dat2[overlap.genes0,],1,mean))
-              signPM = data.frame(Genes = row.names(signPM.mat),signPM.mat)
-              colnames(signPM) = c("Genes","dat1","dat2")
 
+                CallFromR(signPM=signPM,ReactomePath=reactome.df,datadir=paste0(getwd(),"/"),pathwayID=aID)
 
-              CallFromR(signPM=signPM,ReactomePath=reactome.df,datadir=paste0(getwd(),"/"),pathwayID=aID)
-
-              file.rename(paste(aID,"New.jpeg",sep=""),
-                          paste(aID,"_",dat1.name,"_",dat2.name,".jpeg",sep=""))
-              file.remove(paste(aID,".jpeg",sep=""))
-              file.remove(paste(aID,"(1).jpeg",sep=""))
-              file.remove(paste(aID,".sbgn",sep=""))
-            }
-          }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+                file.rename(paste(aID,"New.jpeg",sep=""),
+                            paste(aID,"_",d1,"_",d2,".jpeg",sep=""))
+                file.remove(paste(aID,".jpeg",sep=""))
+                file.remove(paste(aID,"(1).jpeg",sep=""))
+                file.remove(paste(aID,".sbgn",sep=""))
+              }
+            }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+          }
+          file.remove("pallete.jpeg")
+          setwd(orig.path)
         }
-        file.remove("pallete.jpeg")
-        setwd(orig.path)
-
       }
     }
   }
@@ -476,7 +552,7 @@ clustPathway <- function(acsPvalue) {
   #require(ConsensusClusterPlus)
   #set your working dir, automatically save there
 
-  results = ConsensusClusterPlus(d=t(-log10(acsPvalue)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="Pathway clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=15213,plot="png")
+  results = ConsensusClusterPlus(d=t(-log10(acsPvalue)),maxK=10,reps=50,pItem=0.7,pFeature=0.7,title="Pathway clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=15213,plot="png")
 
   return(results) ## a list of K elements (each k represents number of clusters)
 }
@@ -567,7 +643,7 @@ ACS_ADS_DE_cluster = function(mcmc.merge.list,ACS_ADS_pathway,dataset.names,
       }))
       Plist.org[[i]] = Plist[[plist.index]][[2]]
     } else {
-      Plist.org[[i]] = rectGrob(gp=gpar(fill="white"))
+      Plist.org[[i]] = grid::rectGrob(gp=gpar(fill="white"))
     }
   }
   lay = matrix(seq(1:length(Plist.org)),
@@ -575,7 +651,7 @@ ACS_ADS_DE_cluster = function(mcmc.merge.list,ACS_ADS_pathway,dataset.names,
                ncol = length(dataset.names), byrow = T)
 
   pdf(paste0(plot.path,"/multiPlot_ACS_ADS_DE_K",K,".pdf"),width = 50,height = 50)
-  grid.arrange(grobs = Plist.org, layout_matrix = lay)
+  gridExtra::grid.arrange(grobs = Plist.org, layout_matrix = lay)
   dev.off()
 
 }
@@ -912,26 +988,468 @@ genePM <- function(signPM.list, pathway.genes, pathway.name){
     pathway.name <- gsub("/","-",pathway.name)
   }
 
-  #pdf(paste(pathway.name,'.pdf',sep=""))
-  jpeg(paste(pathway.name,".jpeg",sep=""),quality = 100)
-  par(cex.main=1)
-  hm <- heatmap.2(mat, symm=F,main=pathway.name,
-                  cexCol=1,cexRow=0.6,
-                  colsep=c(1:ncol(mat)),
-                  rowsep=c(1:nrow(mat)),
-                  sepwidth=c(0.01, 0.2),  # width of the borders
-                  sepcolor=c('black'),scale='none',
-                  symbreaks=T,key=T, keysize=1,symkey=F,
-                  dendrogram=c('row'),density.info="none",
-                  trace="none",Rowv=T,Colv=F,
-                  col=bluered,breaks=seq(-1,1,by=0.001),
-                  srtCol=0,adjCol = c(NA,0.5))
+  pdf(paste(pathway.name,'.pdf',sep=""))
+  #jpeg(paste(pathway.name,".jpeg",sep=""),quality = 100)
+  p = pheatmap::pheatmap(mat,cluster_cols = FALSE, clustering_method = "complete",main=pathway.name,
+                     color = colorRampPalette(c("green","grey","red"))(n = 499),
+                     breaks = seq(-1,1,length.out = 500))
+  print(p)
   dev.off()
-  return(hm)
+  return(p)
 }
 
 ACStransform <- function(ACS, theta=7) {
   trun.ACS <-ifelse(ACS<0,0,ACS)
   trsf.ACS <- theta*exp(-theta*trun.ACS)
   return(trsf.ACS)
+}
+
+heatmap.3 <- function(x,
+                      Rowv = TRUE, Colv = if (symm) "Rowv" else TRUE,
+                      distfun = dist,
+                      hclustfun = hclust,
+                      dendrogram = c("both","row", "column", "none"),
+                      symm = FALSE,
+                      scale = c("none","row", "column"),
+                      na.rm = TRUE,
+                      revC = identical(Colv,"Rowv"),
+                      add.expr,
+                      breaks,
+                      symbreaks = max(x < 0, na.rm = TRUE) || scale != "none",
+                      col = "heat.colors",
+                      colsep,
+                      rowsep,
+                      sepcolor = "white",
+                      sepwidth = c(0.05, 0.05),
+                      cellnote,
+                      notecex = 1,
+                      notecol = "cyan",
+                      na.color = par("bg"),
+                      trace = c("none", "column","row", "both"),
+                      tracecol = "cyan",
+                      hline = median(breaks),
+                      vline = median(breaks),
+                      linecol = tracecol,
+                      margins = c(5,5),
+                      ColSideColors,
+                      RowSideColors,
+                      side.height.fraction=0.3,
+                      cexRow = 0.2 + 1/log10(nr),
+                      cexCol = 0.2 + 1/log10(nc),
+                      labRow = NULL,
+                      labCol = NULL,
+                      key = TRUE,
+                      keysize = 1.5,
+                      density.info = c("none", "histogram", "density"),
+                      denscol = tracecol,
+                      symkey = max(x < 0, na.rm = TRUE) || symbreaks,
+                      densadj = 0.25,
+                      main = NULL,
+                      xlab = NULL,
+                      ylab = NULL,
+                      lmat = NULL,
+                      lhei = NULL,
+                      lwid = NULL,
+                      ColSideColorsSize = 1,
+                      RowSideColorsSize = 1,
+                      KeyValueName="Value",...){
+
+  invalid <- function (x) {
+    if (missing(x) || is.null(x) || length(x) == 0)
+      return(TRUE)
+    if (is.list(x))
+      return(all(sapply(x, invalid)))
+    else if (is.vector(x))
+      return(all(is.na(x)))
+    else return(FALSE)
+  }
+
+  x <- as.matrix(x)
+  scale01 <- function(x, low = min(x), high = max(x)) {
+    x <- (x - low)/(high - low)
+    x
+  }
+  retval <- list()
+  scale <- if (symm && missing(scale))
+    "none"
+  else match.arg(scale)
+  dendrogram <- match.arg(dendrogram)
+  trace <- match.arg(trace)
+  density.info <- match.arg(density.info)
+  if (length(col) == 1 && is.character(col))
+    col <- get(col, mode = "function")
+  if (!missing(breaks) && (scale != "none"))
+    warning("Using scale=\"row\" or scale=\"column\" when breaks are",
+            "specified can produce unpredictable results.", "Please consider using only one or the other.")
+  if (is.null(Rowv) || is.na(Rowv))
+    Rowv <- FALSE
+  if (is.null(Colv) || is.na(Colv))
+    Colv <- FALSE
+  else if (Colv == "Rowv" && !isTRUE(Rowv))
+    Colv <- FALSE
+  if (length(di <- dim(x)) != 2 || !is.numeric(x))
+    stop("`x' must be a numeric matrix")
+  nr <- di[1]
+  nc <- di[2]
+  if (nr <= 1 || nc <= 1)
+    stop("`x' must have at least 2 rows and 2 columns")
+  if (!is.numeric(margins) || length(margins) != 2)
+    stop("`margins' must be a numeric vector of length 2")
+  if (missing(cellnote))
+    cellnote <- matrix("", ncol = ncol(x), nrow = nrow(x))
+  if (!inherits(Rowv, "dendrogram")) {
+    if (((!isTRUE(Rowv)) || (is.null(Rowv))) && (dendrogram %in%
+                                                 c("both", "row"))) {
+      if (is.logical(Colv) && (Colv))
+        dendrogram <- "column"
+      else dedrogram <- "none"
+      warning("Discrepancy: Rowv is FALSE, while dendrogram is `",
+              dendrogram, "'. Omitting row dendogram.")
+    }
+  }
+  if (!inherits(Colv, "dendrogram")) {
+    if (((!isTRUE(Colv)) || (is.null(Colv))) && (dendrogram %in%
+                                                 c("both", "column"))) {
+      if (is.logical(Rowv) && (Rowv))
+        dendrogram <- "row"
+      else dendrogram <- "none"
+      warning("Discrepancy: Colv is FALSE, while dendrogram is `",
+              dendrogram, "'. Omitting column dendogram.")
+    }
+  }
+  if (inherits(Rowv, "dendrogram")) {
+    ddr <- Rowv
+    rowInd <- order.dendrogram(ddr)
+  }
+  else if (is.integer(Rowv)) {
+    hcr <- hclustfun(distfun(x))
+    ddr <- as.dendrogram(hcr)
+    ddr <- reorder(ddr, Rowv)
+    rowInd <- order.dendrogram(ddr)
+    if (nr != length(rowInd))
+      stop("row dendrogram ordering gave index of wrong length")
+  }
+  else if (isTRUE(Rowv)) {
+    Rowv <- rowMeans(x, na.rm = na.rm)
+    hcr <- hclustfun(distfun(x))
+    ddr <- as.dendrogram(hcr)
+    ddr <- reorder(ddr, Rowv)
+    rowInd <- order.dendrogram(ddr)
+    if (nr != length(rowInd))
+      stop("row dendrogram ordering gave index of wrong length")
+  }
+  else {
+    rowInd <- nr:1
+  }
+  if (inherits(Colv, "dendrogram")) {
+    ddc <- Colv
+    colInd <- order.dendrogram(ddc)
+  }
+  else if (identical(Colv, "Rowv")) {
+    if (nr != nc)
+      stop("Colv = \"Rowv\" but nrow(x) != ncol(x)")
+    if (exists("ddr")) {
+      ddc <- ddr
+      colInd <- order.dendrogram(ddc)
+    }
+    else colInd <- rowInd
+  }
+  else if (is.integer(Colv)) {
+    hcc <- hclustfun(distfun(if (symm)
+      x
+      else t(x)))
+    ddc <- as.dendrogram(hcc)
+    ddc <- reorder(ddc, Colv)
+    colInd <- order.dendrogram(ddc)
+    if (nc != length(colInd))
+      stop("column dendrogram ordering gave index of wrong length")
+  }
+  else if (isTRUE(Colv)) {
+    Colv <- colMeans(x, na.rm = na.rm)
+    hcc <- hclustfun(distfun(if (symm)
+      x
+      else t(x)))
+    ddc <- as.dendrogram(hcc)
+    ddc <- reorder(ddc, Colv)
+    colInd <- order.dendrogram(ddc)
+    if (nc != length(colInd))
+      stop("column dendrogram ordering gave index of wrong length")
+  }
+  else {
+    colInd <- 1:nc
+  }
+  retval$rowInd <- rowInd
+  retval$colInd <- colInd
+  retval$call <- match.call()
+  x <- x[rowInd, colInd]
+  x.unscaled <- x
+  cellnote <- cellnote[rowInd, colInd]
+  if (is.null(labRow))
+    labRow <- if (is.null(rownames(x)))
+      (1:nr)[rowInd]
+  else rownames(x)
+  else labRow <- labRow[rowInd]
+  if (is.null(labCol))
+    labCol <- if (is.null(colnames(x)))
+      (1:nc)[colInd]
+  else colnames(x)
+  else labCol <- labCol[colInd]
+  if (scale == "row") {
+    retval$rowMeans <- rm <- rowMeans(x, na.rm = na.rm)
+    x <- sweep(x, 1, rm)
+    retval$rowSDs <- sx <- apply(x, 1, sd, na.rm = na.rm)
+    x <- sweep(x, 1, sx, "/")
+  }
+  else if (scale == "column") {
+    retval$colMeans <- rm <- colMeans(x, na.rm = na.rm)
+    x <- sweep(x, 2, rm)
+    retval$colSDs <- sx <- apply(x, 2, sd, na.rm = na.rm)
+    x <- sweep(x, 2, sx, "/")
+  }
+  if (missing(breaks) || is.null(breaks) || length(breaks) < 1) {
+    if (missing(col) || is.function(col))
+      breaks <- 16
+    else breaks <- length(col) + 1
+  }
+  if (length(breaks) == 1) {
+    if (!symbreaks)
+      breaks <- seq(min(x, na.rm = na.rm), max(x, na.rm = na.rm),
+                    length = breaks)
+    else {
+      extreme <- max(abs(x), na.rm = TRUE)
+      breaks <- seq(-extreme, extreme, length = breaks)
+    }
+  }
+  nbr <- length(breaks)
+  ncol <- length(breaks) - 1
+  if (class(col) == "function")
+    col <- col(ncol)
+  min.breaks <- min(breaks)
+  max.breaks <- max(breaks)
+  x[x < min.breaks] <- min.breaks
+  x[x > max.breaks] <- max.breaks
+  if (missing(lhei) || is.null(lhei))
+    lhei <- c(keysize, 4)
+  if (missing(lwid) || is.null(lwid))
+    lwid <- c(keysize, 4)
+  if (missing(lmat) || is.null(lmat)) {
+    lmat <- rbind(4:3, 2:1)
+
+    if (!missing(ColSideColors)) {
+      #if (!is.matrix(ColSideColors))
+      #stop("'ColSideColors' must be a matrix")
+      if (!is.character(ColSideColors) || nrow(ColSideColors) != nc)
+        stop("'ColSideColors' must be a matrix of nrow(x) rows")
+      lmat <- rbind(lmat[1, ] + 1, c(NA, 1), lmat[2, ] + 1)
+      #lhei <- c(lhei[1], 0.2, lhei[2])
+      lhei=c(lhei[1], side.height.fraction*ColSideColorsSize/2, lhei[2])
+    }
+
+    if (!missing(RowSideColors)) {
+      #if (!is.matrix(RowSideColors))
+      #stop("'RowSideColors' must be a matrix")
+      if (!is.character(RowSideColors) || ncol(RowSideColors) != nr)
+        stop("'RowSideColors' must be a matrix of ncol(x) columns")
+      lmat <- cbind(lmat[, 1] + 1, c(rep(NA, nrow(lmat) - 1), 1), lmat[,2] + 1)
+      #lwid <- c(lwid[1], 0.2, lwid[2])
+      lwid <- c(lwid[1], side.height.fraction*RowSideColorsSize/2, lwid[2])
+    }
+    lmat[is.na(lmat)] <- 0
+  }
+
+  if (length(lhei) != nrow(lmat))
+    stop("lhei must have length = nrow(lmat) = ", nrow(lmat))
+  if (length(lwid) != ncol(lmat))
+    stop("lwid must have length = ncol(lmat) =", ncol(lmat))
+  op <- par(no.readonly = TRUE)
+  on.exit(par(op))
+
+  layout(lmat, widths = lwid, heights = lhei, respect = FALSE)
+
+  if (!missing(RowSideColors)) {
+    if (!is.matrix(RowSideColors)){
+      par(mar = c(margins[1], 0, 0, 0.5))
+      image(rbind(1:nr), col = RowSideColors[rowInd], axes = FALSE)
+    } else {
+      par(mar = c(margins[1], 0, 0, 0.5))
+      rsc = t(RowSideColors[,rowInd, drop=F])
+      rsc.colors = matrix()
+      rsc.names = names(table(rsc))
+      rsc.i = 1
+      for (rsc.name in rsc.names) {
+        rsc.colors[rsc.i] = rsc.name
+        rsc[rsc == rsc.name] = rsc.i
+        rsc.i = rsc.i + 1
+      }
+      rsc = matrix(as.numeric(rsc), nrow = dim(rsc)[1])
+      image(t(rsc), col = as.vector(rsc.colors), axes = FALSE)
+      if (length(rownames(RowSideColors)) > 0) {
+        axis(1, 0:(dim(rsc)[2] - 1)/max(1,(dim(rsc)[2] - 1)), rownames(RowSideColors), las = 2, tick = FALSE)
+      }
+    }
+  }
+
+  if (!missing(ColSideColors)) {
+
+    if (!is.matrix(ColSideColors)){
+      par(mar = c(0.5, 0, 0, margins[2]))
+      image(cbind(1:nc), col = ColSideColors[colInd], axes = FALSE)
+    } else {
+      par(mar = c(0.5, 0, 0, margins[2]))
+      csc = ColSideColors[colInd, , drop=F]
+      csc.colors = matrix()
+      csc.names = names(table(csc))
+      csc.i = 1
+      for (csc.name in csc.names) {
+        csc.colors[csc.i] = csc.name
+        csc[csc == csc.name] = csc.i
+        csc.i = csc.i + 1
+      }
+      csc = matrix(as.numeric(csc), nrow = dim(csc)[1])
+      image(csc, col = as.vector(csc.colors), axes = FALSE)
+      if (length(colnames(ColSideColors)) > 0) {
+        axis(2, 0:(dim(csc)[2] - 1)/max(1,(dim(csc)[2] - 1)), colnames(ColSideColors), las = 2, tick = FALSE)
+      }
+    }
+  }
+
+  par(mar = c(margins[1], 0, 0, margins[2]))
+  x <- t(x)
+  cellnote <- t(cellnote)
+  if (revC) {
+    iy <- nr:1
+    if (exists("ddr"))
+      ddr <- rev(ddr)
+    x <- x[, iy]
+    cellnote <- cellnote[, iy]
+  }
+  else iy <- 1:nr
+  image(1:nc, 1:nr, x, xlim = 0.5 + c(0, nc), ylim = 0.5 + c(0, nr), axes = FALSE, xlab = "", ylab = "", col = col, breaks = breaks, ...)
+  retval$carpet <- x
+  if (exists("ddr"))
+    retval$rowDendrogram <- ddr
+  if (exists("ddc"))
+    retval$colDendrogram <- ddc
+  retval$breaks <- breaks
+  retval$col <- col
+  if (!invalid(na.color) & any(is.na(x))) { # load library(gplots)
+    mmat <- ifelse(is.na(x), 1, NA)
+    image(1:nc, 1:nr, mmat, axes = FALSE, xlab = "", ylab = "",
+          col = na.color, add = TRUE)
+  }
+  axis(1, 1:nc, labels = labCol, las = 2, line = -0.5, tick = 0,
+       cex.axis = cexCol)
+  if (!is.null(xlab))
+    mtext(xlab, side = 1, line = margins[1] - 1.25)
+  axis(4, iy, labels = labRow, las = 2, line = -0.5, tick = 0,
+       cex.axis = cexRow)
+  if (!is.null(ylab))
+    mtext(ylab, side = 4, line = margins[2] - 1.25)
+  if (!missing(add.expr))
+    eval(substitute(add.expr))
+  if (!missing(colsep))
+    for (csep in colsep) rect(xleft = csep + 0.5, ybottom = rep(0, length(csep)), xright = csep + 0.5 + sepwidth[1], ytop = rep(ncol(x) + 1, csep), lty = 1, lwd = 1, col = sepcolor, border = sepcolor)
+  if (!missing(rowsep))
+    for (rsep in rowsep) rect(xleft = 0, ybottom = (ncol(x) + 1 - rsep) - 0.5, xright = nrow(x) + 1, ytop = (ncol(x) + 1 - rsep) - 0.5 - sepwidth[2], lty = 1, lwd = 1, col = sepcolor, border = sepcolor)
+  min.scale <- min(breaks)
+  max.scale <- max(breaks)
+  x.scaled <- scale01(t(x), min.scale, max.scale)
+  if (trace %in% c("both", "column")) {
+    retval$vline <- vline
+    vline.vals <- scale01(vline, min.scale, max.scale)
+    for (i in colInd) {
+      if (!is.null(vline)) {
+        abline(v = i - 0.5 + vline.vals, col = linecol,
+               lty = 2)
+      }
+      xv <- rep(i, nrow(x.scaled)) + x.scaled[, i] - 0.5
+      xv <- c(xv[1], xv)
+      yv <- 1:length(xv) - 0.5
+      lines(x = xv, y = yv, lwd = 1, col = tracecol, type = "s")
+    }
+  }
+  if (trace %in% c("both", "row")) {
+    retval$hline <- hline
+    hline.vals <- scale01(hline, min.scale, max.scale)
+    for (i in rowInd) {
+      if (!is.null(hline)) {
+        abline(h = i + hline, col = linecol, lty = 2)
+      }
+      yv <- rep(i, ncol(x.scaled)) + x.scaled[i, ] - 0.5
+      yv <- rev(c(yv[1], yv))
+      xv <- length(yv):1 - 0.5
+      lines(x = xv, y = yv, lwd = 1, col = tracecol, type = "s")
+    }
+  }
+  if (!missing(cellnote))
+    text(x = c(row(cellnote)), y = c(col(cellnote)), labels = c(cellnote),
+         col = notecol, cex = notecex)
+  par(mar = c(margins[1], 0, 0, 0))
+  if (dendrogram %in% c("both", "row")) {
+    plot(ddr, horiz = TRUE, axes = FALSE, yaxs = "i", leaflab = "none")
+  }
+  else plot.new()
+  par(mar = c(0, 0, if (!is.null(main)) 5 else 0, margins[2]))
+  if (dendrogram %in% c("both", "column")) {
+    plot(ddc, axes = FALSE, xaxs = "i", leaflab = "none")
+  }
+  else plot.new()
+  if (!is.null(main))
+    title(main, cex.main = 1.5 * op[["cex.main"]])
+  if (key) {
+    par(mar = c(5, 4, 2, 1), cex = 0.75)
+    tmpbreaks <- breaks
+    if (symkey) {
+      max.raw <- max(abs(c(x, breaks)), na.rm = TRUE)
+      min.raw <- -max.raw
+      tmpbreaks[1] <- -max(abs(x), na.rm = TRUE)
+      tmpbreaks[length(tmpbreaks)] <- max(abs(x), na.rm = TRUE)
+    }
+    else {
+      min.raw <- min(x, na.rm = TRUE)
+      max.raw <- max(x, na.rm = TRUE)
+    }
+
+    z <- seq(min.raw, max.raw, length = length(col))
+    image(z = matrix(z, ncol = 1), col = col, breaks = tmpbreaks,
+          xaxt = "n", yaxt = "n")
+    par(usr = c(0, 1, 0, 1))
+    lv <- pretty(breaks)
+    xv <- scale01(as.numeric(lv), min.raw, max.raw)
+    axis(1, at = xv, labels = lv)
+    if (scale == "row")
+      mtext(side = 1, "Row Z-Score", line = 2)
+    else if (scale == "column")
+      mtext(side = 1, "Column Z-Score", line = 2)
+    else mtext(side = 1, KeyValueName, line = 2)
+    if (density.info == "density") {
+      dens <- density(x, adjust = densadj, na.rm = TRUE)
+      omit <- dens$x < min(breaks) | dens$x > max(breaks)
+      dens$x <- dens$x[-omit]
+      dens$y <- dens$y[-omit]
+      dens$x <- scale01(dens$x, min.raw, max.raw)
+      lines(dens$x, dens$y/max(dens$y) * 0.95, col = denscol,
+            lwd = 1)
+      axis(2, at = pretty(dens$y)/max(dens$y) * 0.95, pretty(dens$y))
+      title("Color Key\nand Density Plot")
+      par(cex = 0.5)
+      mtext(side = 2, "Density", line = 2)
+    }
+    else if (density.info == "histogram") {
+      h <- hist(x, plot = FALSE, breaks = breaks)
+      hx <- scale01(breaks, min.raw, max.raw)
+      hy <- c(h$counts, h$counts[length(h$counts)])
+      lines(hx, hy/max(hy) * 0.95, lwd = 1, type = "s",
+            col = denscol)
+      axis(2, at = pretty(hy)/max(hy) * 0.95, pretty(hy))
+      title("Color Key\nand Histogram")
+      par(cex = 0.5)
+      mtext(side = 2, "Count", line = 2)
+    }
+    else title("Color Key")
+  }
+  else plot.new()
+  retval$colorTable <- data.frame(low = retval$breaks[-length(retval$breaks)],
+                                  high = retval$breaks[-1], color = retval$col)
+  invisible(retval)
 }

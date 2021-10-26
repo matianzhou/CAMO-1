@@ -51,7 +51,7 @@ mdsGlobal <- function(acs.value,model.name,sep="_",file) {
   color <- rainbow(M,s=0.5,v=1,alpha=1)
   pdf(file)
   p<-ggplot() +
-    ggtitle("Global ACSF plot") +
+    ggtitle("Global MDS plot") +
     xlab("Coordinate 1") + ylab("Coordinate 2") +
     xlim(c(-xlimit-0.5,xlimit+0.5)) + ylim(c(-ylimit-0.5,ylimit+0.5)) +
     geom_point(aes(x, y), color = color  ,size=6) +

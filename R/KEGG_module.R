@@ -54,41 +54,72 @@
 ##'                               Tm=10,mu=0.95,epsilon=1e-5,N=1000,
 ##'                               Elbow_plot = T, filePath = getwd())
 ##' }
-KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
+KEGG_module = function(mcmc.merge.list, data.pair,
+                       KEGGspecies="hsa", KEGGpathwayID,
+                       KEGG.dataG.topologyG = NULL,
+                       KEGG.dataG.entrezID = NULL,
                        gene_type = c("discordant","concordant"),
-                       DE_PM_cut = 0.2, minM = 4, maxM = "default",
+                       DE_PM_cut = 0.2, minM = 4, maxM = NULL,
                        B = 1000, cores = 1,
                        search_method = c("Exhaustive","SA"),
                        reps_eachM = 1,
                        topG_from_previous=1,
                        Tm0=10,mu=0.95,epsilon=1e-5,N=3000,
                        Elbow_plot = F, filePath = getwd(),
-                       seed = 12345){
-  if(minM < 2){
-    stop("minM has to be larger than 1!")
+                       seed = 12345, sep = "-"){
+  if(!is.null(KEGG.dataG.entrezID) & !KEGG.dataG.entrezID %in% c("hs","mm","rn","ce","dm")){
+    stop("KEGG.dataG.entrezID has to be one of the 'hs','mm,'rn,'ce','dm'")
   }
-  map.ls = as.list(as.list(org.Hs.egALIAS2EG))
+  if(minM < 2){
+    stop("minM has to be larger than 1.")
+  }
 
   dat1.name = data.pair[[1]]
   dat2.name = data.pair[[2]]
   dat1 = mcmc.merge.list[[dat1.name]]
   dat2 = mcmc.merge.list[[dat2.name]]
   signPM.mat = cbind(apply(dat1,1,mean),apply(dat2,1,mean))
-  datG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])#entrez ID
-  rownames(signPM.mat) = datG
 
-  adjacent_mat = parseRelation(gsub("hsa","",KEGGpathwayID))##only for human now
-  xmlG = row.names(adjacent_mat)[grep("hsa",row.names(adjacent_mat))]
-  xmlG = gsub("hsa:","",xmlG)
+  #match data names and gene names on KEGG topology
+  if(is.null(KEGG.dataG.topologyG) & is.null(KEGG.dataG.entrezID)){
+    topologyG = rownames(signPM.mat)
+  }else if(!is.null(KEGG.dataG.topologyG)){
+    topologyG = KEGG.dataG.topologyG[match(rownames(signPM.mat),KEGG.dataG.topologyG[,1]),2]
+  }else if(KEGG.dataG.entrezID == "hs"){
+    map.ls = as.list(as.list(org.Hs.eg.db::org.Hs.egALIAS2EG))
+    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+  }else if(KEGG.dataG.entrezID == "mm"){
+    map.ls = as.list(as.list(org.Mm.eg.db::org.Mm.egALIAS2EG))
+    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+  }else if(KEGG.dataG.entrezID == "rn"){
+    map.ls = as.list(as.list(org.Rn.eg.db::org.Rn.egALIAS2EG))
+    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+  }else if(KEGG.dataG.entrezID == "ce"){
+    map.ls = as.list(as.list(org.Ce.eg.db::org.Ce.egALIAS2EG))
+    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+  }else if(KEGG.dataG.entrezID == "dm"){
+    map.ls = as.list(as.list(org.Dm.eg.db::org.Dm.egALIAS2EG))
+    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+  }
+
+  na.index = which(is.na(topologyG))
+  if(length(na.index != 0)){
+    topologyG = topologyG[-na.index]
+    signPM.mat = signPM.mat[-na.index,]
+  }
+  rownames(signPM.mat) = topologyG
+  adjacent_mat = parseRelation(pathwayID = KEGGpathwayID, keggSpecies = KEGGspecies, sep = sep)##only for human now
+  xmlG = row.names(adjacent_mat)[grep(KEGGspecies,row.names(adjacent_mat))]
+  xmlG = gsub(paste0(KEGGspecies,":"),"",xmlG)
   xmlG.ls = lapply(xmlG, function(x){
-    strsplit(x,"_")[[1]]
+    strsplit(x,sep)[[1]]
   })
 
-  row.names(adjacent_mat) = colnames(adjacent_mat) = gsub("hsa:","",row.names(adjacent_mat))
+  row.names(adjacent_mat) = colnames(adjacent_mat) = gsub(paste0(KEGGspecies,":"),"",row.names(adjacent_mat))
 
   mergePMls = lapply(1:length(xmlG.ls), function(x){
     genes = xmlG.ls[[x]]
-    cmG = intersect(datG,genes)
+    cmG = intersect(topologyG,genes)
     if(length(cmG) !=0){
       sub.signPM.mat = matrix(signPM.mat[cmG,],ncol = 2)
       avgPM = apply(sub.signPM.mat, 2, mean)
@@ -97,9 +128,6 @@ KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
   })
   names(mergePMls) = xmlG
   mergePMmat = do.call(rbind,mergePMls)
-  if(nrow(mergePMmat) == 0){
-    stop("no overlapping genes between XML and data!")
-  }
 
   #discordant/concordant genes definition
   if(gene_type == "discordant"){
@@ -108,10 +136,6 @@ KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
     nodes = unique(rownames(mergePMmat)[which(mergePMmat[,1]*mergePMmat[,2]>0&abs(mergePMmat[,1])>DE_PM_cut&abs(mergePMmat[,2])>DE_PM_cut)])
   }else{
     stop("gene_type has to be 'discordant' or 'concordant'.")
-  }
-
-  if(length(nodes) == 0){
-    stop(paste0("no ", gene_type," genes under selected criterion!"))
   }
 
   undir_adj_mat = adjacent_mat
@@ -134,13 +158,9 @@ KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
   #sum(lower.tri(sub.adj.mat))/length(lower.tri(sub.adj.mat))
   #(sum(lower.tri(undir_adj_mat))-sum(lower.tri(sub.adj.mat)))/(length(lower.tri(undir_adj_mat))-length(lower.tri(sub.adj.mat)))
 
-  if(maxM == "default"){
+  if(is.null(maxM)){
     maxM = length(nodes)
   }
-  if(maxM < minM){
-    stop("maxM has to be larger than minM!")
-  }
-
   module.size = minM:maxM
 
   search_method = match.arg(search_method)
@@ -218,6 +238,7 @@ KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
   p.cut = p.mean[index]+2*p.sd[index]
   finalSelect = names(minG.ls)[max(which(p.mean<p.cut & 1:length(p.mean)>=index))]
 
+  KEGGpathwayID_spec = paste0(KEGGspecies,KEGGpathwayID)
   if(Elbow_plot == T){
     names(p.mean) = names(p.sd) = module.size
     pL = sapply(p.mean-2*p.sd, function(x) ifelse(x<0,0,x))
@@ -225,38 +246,41 @@ KEGG_module = function(mcmc.merge.list, KEGGpathwayID, data.pair,
                     logp.max = -log10(pL),
                     logp.min = -log10(p.mean+2*p.sd),
                     size = module.size)
-    png(paste0(filePath,"/",KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_elbow_plot.png"))
+    png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_elbow_plot.png"))
     p = ggplot(df, aes(x=size, y=logp.observed)) +
       geom_errorbar(aes(ymin=logp.min, ymax=logp.max), width=.1) +
       geom_line() +
       geom_point() +
       ylim(0,3.1)+
-      labs(title = paste0(KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "-log10(p-value)")
+      labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "-log10(p-value)")
     print(p)
     dev.off()
 
     df.ratio = data.frame(obs.sp, obs.median.ratio, size = module.size)
 
-    png(paste0(filePath,"/",KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_avgSP.png"))
+    png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_avgSP.png"))
     p = ggplot(df.ratio, aes(x=size, y=obs.sp)) +
       geom_line() +
       geom_point()+
-      labs(title = paste0(KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "module average shortest path value")
+      labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "module average shortest path value")
     print(p)
     dev.off()
 
-    png(paste0(filePath,"/",KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"avgSP_ratio_obs_to_median.png"))
+    png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"avgSP_ratio_obs_to_median.png"))
     p = ggplot(df.ratio, aes(x=size, y=obs.median.ratio)) +
       geom_line() +
       geom_point() +
-      labs(title = paste0(KEGGpathwayID,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "average module shortest path/median(null average shortest path)")
+      labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "average module shortest path/median(null average shortest path)")
     print(p)
     dev.off()
 
   }
   return(list(minG.ls=minG.ls,bestSize = finalSelect,
               mergePMmat = mergePMmat,
+              KEGGspecies = KEGGspecies,
               KEGGpathwayID = KEGGpathwayID,
-              data.pair = data.pair))
+              data.pair = data.pair,
+              module.type = gene_type))
 }
+
 

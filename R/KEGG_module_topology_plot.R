@@ -17,7 +17,9 @@
 KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",filePath = getwd()){
   minG.ls = res_KEGG_module$minG.ls
   mergePMmat = res_KEGG_module$mergePMmat
+  KEGGspecies = res_KEGG_module$KEGGspecies
   KEGGpathwayID = res_KEGG_module$KEGGpathwayID
+  KEGGpathwayID_spec = paste0(KEGGspecies,KEGGpathwayID)
   data.pair = res_KEGG_module$data.pair
   dat1.name = data.pair[1]
   dat2.name = data.pair[2]
@@ -36,15 +38,14 @@ KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",fileP
       signPM.mat = mergePMmat[topologyG,]
       row.names(signPM.mat) = sapply(row.names(signPM.mat), function(x) strsplit(x,"_")[[1]][1])
 
-      pathwayID = gsub("hsa","",KEGGpathwayID)
-      res = pathview(gene.data = signPM.mat, pathway.id = pathwayID,
-                     species = "hsa", out.suffix = "", kegg.native = T,
+      res = pathview(gene.data = signPM.mat, pathway.id = KEGGpathwayID,
+                     species = KEGGspecies, out.suffix = "", kegg.native = T,
                      key.pos = "bottomright", map.null=T,cex = 0.15)
 
-      file.rename(paste(KEGGpathwayID,"..multi.png",sep=""),
-                  paste(KEGGpathwayID,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],".png",sep=""))
-      file.remove(paste(KEGGpathwayID,".xml",sep=""))
-      file.remove(paste(KEGGpathwayID,".png",sep=""))
+      file.rename(paste(KEGGpathwayID_spec,"..multi.png",sep=""),
+                  paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],".png",sep=""))
+      file.remove(paste(KEGGpathwayID_spec,".xml",sep=""))
+      file.remove(paste(KEGGpathwayID_spec,".png",sep=""))
 
 
     }else{
@@ -53,14 +54,13 @@ KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",fileP
         signPM.mat = mergePMmat[topologyG0,]
         row.names(signPM.mat) = sapply(row.names(signPM.mat), function(x) strsplit(x,"_")[[1]][1])
 
-        pathwayID = gsub("hsa","",KEGGpathwayID)
-        res = pathview(gene.data = signPM.mat, pathway.id = pathwayID,
-                       species = "hsa", out.suffix = "", kegg.native = T,
+        res = pathview(gene.data = signPM.mat, pathway.id = KEGGpathwayID,
+                       species = KEGGspecies, out.suffix = "", kegg.native = T,
                        key.pos = "bottomright", map.null=T,cex = 0.15)
-        file.rename(paste(KEGGpathwayID,"..multi.png",sep=""),
-                    paste(KEGGpathwayID,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],"_",i,".png",sep=""))
-        file.remove(paste(KEGGpathwayID,".xml",sep=""))
-        file.remove(paste(KEGGpathwayID,".png",sep=""))
+        file.rename(paste(KEGGpathwayID_spec,"..multi.png",sep=""),
+                    paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],"_",i,".png",sep=""))
+        file.remove(paste(KEGGpathwayID_spec,".xml",sep=""))
+        file.remove(paste(KEGGpathwayID_spec,".png",sep=""))
 
       }
     }
