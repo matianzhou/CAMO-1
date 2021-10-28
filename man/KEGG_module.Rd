@@ -7,12 +7,15 @@ corresponding p-values at different module sizes}
 \usage{
 KEGG_module(
   mcmc.merge.list,
+  KEGGspecies = "hsa",
   KEGGpathwayID,
+  KEGG.dataGisTopologyG = FALSE,
+  KEGG.dataG2topologyG = NULL,
   data.pair,
   gene_type = c("discordant", "concordant"),
   DE_PM_cut = 0.2,
   minM = 4,
-  maxM = "default",
+  maxM = NULL,
   B = 1000,
   cores = 1,
   search_method = c("Exhaustive", "SA"),
@@ -24,13 +27,28 @@ KEGG_module(
   N = 3000,
   Elbow_plot = F,
   filePath = getwd(),
-  seed = 12345
+  seed = 12345,
+  sep = "-"
 )
 }
 \arguments{
 \item{mcmc.merge.list:}{a list of merged MCMC output matrices.}
 
-\item{KEGGpathwayID:}{a KEGG pathway ID, only accept pathway ID with prefix 'hsa'.}
+\item{KEGGspecies:}{the KEGG species abbreviation. Default is "hsa".}
+
+\item{KEGGpathwayID:}{a KEGG pathway ID, do not include organism prefix.}
+
+\item{KEGG.dataGisTopologyG:}{whether gene names in data are same as entries on KEGG topology. If TRUE,
+search topology nodes/entries by data gene names directly. Default is FALSE.}
+
+\item{KEGG.dataG2topologyG:}{a data frame which maps gene names in mcmc.merge.list (first column) to
+entries on KEGG topology (second column). If NULL & KEGG.dataGisEntrezID=F & KEGGspecies is "hsa", "mmu" or
+"rno", gene symbols will be automatically mapped to EntrezID by Bioconductor packages
+"org.Hs.eg.db", "org.Mm.eg.db", "org.Rn.eg.db". If NULL & KEGG.dataGisEntrezID=F & KEGGspecies="cel",
+gene symbols will be automatically mapped to WormBase sequence name by Bioconductor package "biomaRt" with prefix "CELE_"
+added to match entry names in KEGG topology for Caenorhabditis elegans. If NULL & KEGG.dataGisEntrezID=F & KEGGspecies="dme",
+gene symbols will be automatically mapped to EntrezID and then FlyBase CG IDs by Bioconductor package "org.Dm.eg.db" with
+prefix "Dmel_" added to match entry names in KEGG topology for Drosophila melanogaster.}
 
 \item{data.pair:}{a character vector of two study names.}
 
@@ -58,7 +76,7 @@ should be one of "Exhaustive" or "SA" (Simulated-Annealing).}
 \item{topG_from_previous:}{the number of top module results stored as initials for next module
 size when SA is selected.}
 
-\item{Tm:}{SA parameter - the initial temparature.}
+\item{Tm0:}{SA parameter - the initial temparature.}
 
 \item{mu:}{SA parameter - the temparature multiplier.}
 
@@ -66,7 +84,7 @@ size when SA is selected.}
 
 \item{N:}{SA parameter - the number of maximum annealing times.}
 
-\item{Elbow_plot:}{a logical value indicating if an elbow plot of -log10P-values at each module
+\item{Elbow_plot:}{a logical value indicating if an elbow plot of -log10(p-value) at each module
 size will be saved.}
 
 \item{filePath:}{the path to save the elbow plot. Default is the current working directory.}
@@ -75,30 +93,39 @@ size will be saved.}
 }
 \value{
 A list containing 5 elements.
-minG.ls: it contains the following information for each module size from minM to maxM.
+\itemize{
+\item minG.ls: contains the following information for each module size from minM to maxM.
 \code{minG} has genes in the module whose average shortest path is optimized. \code{p.mean},
 \code{p.sd} and \code{sp} are p-values, corresponding standard deviation (sd) and the average
 shortest path respectively. \code{null.sp.mean} and \code{null.sp.median} are from permutated
 null distribution. If \code{SA}is selected, the top \code{topG_from_previous} results at each
 module size is stored in \code{top.G}.
-bestSize: minG.ls results for the largest module size within 2 sd of the smallest p-value.
-mergePMmat: a merged posterior DE mean matrix based on topology nodes,
-KEGGpathwayID and data.pair.
+\item bestSize: minG.ls results for the largest module size within 2 sd of the smallest p-value.
+\item mergePMmat: a merged posterior DE mean matrix based on topology nodes (one node can have
+multiple genes).
+\item KEGGspecies: the KEGG species abbreviation.
+\item KEGGpathwayID: the KEGG pathway ID
+\item data.pair: the two study names.
+\item module.type: discordant or concordant modules.
+}
+In addition, the elbow plot of -log10(p-value) for each module size will be saved to the filePath.
 }
 \description{
-KEGG local concordant/discordant module detection algorithm: local module memberships and
-corresponding p-values at different module sizes
-The \code{KEGG_module} is a function to detect local concordant/discordant modules from KEGG topology
-plots
+The \code{KEGG_module} is a function to identify concordant or discordant subnetworks in KEGG pathways
+based on topological regulatory information by generating local module memberships and
+corresponding p-values at different module sizes.
 }
 \examples{
 \dontrun{
 #mcmc.merge.list from the merge step (see the example in function 'merge')
-res_KEGG_module = KEGG_module(mcmc.merge.list, "hsa04670", data.pair = c("hs","ms"),
+res_KEGG_module = KEGG_module(mcmc.merge.list,
+                              KEGGspecies="hsa",
+                              KEGGpathwayID="04670",
+                              data.pair = c("hs","ms"),
                               gene_type = c("discordant"),
                               DE_PM_cut = 0.2, minM = 4,maxM = NULL,
                               B = 1000, cores = 1,
-                              search_method = c("SA"),
+                              search_method = c("Exhaustive"),
                               reps_eachM = 1,
                               topG_from_previous=1,
                               Tm=10,mu=0.95,epsilon=1e-5,N=1000,

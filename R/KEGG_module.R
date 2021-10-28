@@ -1,11 +1,21 @@
-##' KEGG local concordant/discordant module detection algorithm: local module memberships and
-##' corresponding p-values at different module sizes
-##' The \code{KEGG_module} is a function to detect local concordant/discordant modules from KEGG topology
-##' plots
+##' The \code{KEGG_module} is a function to identify concordant or discordant subnetworks in KEGG pathways
+##' based on topological regulatory information by generating local module memberships and
+##' corresponding p-values at different module sizes.
 ##' @title KEGG local concordant/discordant module detection algorithm: local module memberships and
 ##' corresponding p-values at different module sizes
 ##' @param mcmc.merge.list: a list of merged MCMC output matrices.
-##' @param KEGGpathwayID: a KEGG pathway ID, only accept pathway ID with prefix 'hsa'.
+##' @param KEGGspecies: the KEGG species abbreviation. Default is "hsa".
+##' @param KEGGpathwayID: a KEGG pathway ID, do not include organism prefix.
+##' @param KEGG.dataGisTopologyG: whether gene names in data are same as entries on KEGG topology. If TRUE,
+##' search topology nodes/entries by data gene names directly. Default is FALSE.
+##' @param KEGG.dataG2topologyG: a data frame which maps gene names in mcmc.merge.list (first column) to
+##' entries on KEGG topology (second column). If NULL & KEGG.dataGisEntrezID=F & KEGGspecies is "hsa", "mmu" or
+##' "rno", gene symbols will be automatically mapped to EntrezID by Bioconductor packages
+##' "org.Hs.eg.db", "org.Mm.eg.db", "org.Rn.eg.db". If NULL & KEGG.dataGisEntrezID=F & KEGGspecies="cel",
+##' gene symbols will be automatically mapped to WormBase sequence name by Bioconductor package "biomaRt" with prefix "CELE_"
+##' added to match entry names in KEGG topology for Caenorhabditis elegans. If NULL & KEGG.dataGisEntrezID=F & KEGGspecies="dme",
+##' gene symbols will be automatically mapped to EntrezID and then FlyBase CG IDs by Bioconductor package "org.Dm.eg.db" with
+##' prefix "Dmel_" added to match entry names in KEGG topology for Drosophila melanogaster.
 ##' @param data.pair: a character vector of two study names.
 ##' @param gene_type: the type of module of interests. This should be one of "concordant" or
 ##' "discordant".
@@ -22,42 +32,54 @@
 ##' @param reps_eachM: the number of searching repetitions at each module size when SA is selected.
 ##' @param topG_from_previous: the number of top module results stored as initials for next module
 ##' size when SA is selected.
-##' @param Tm: SA parameter - the initial temparature.
+##' @param Tm0: SA parameter - the initial temparature.
 ##' @param mu: SA parameter - the temparature multiplier.
 ##' @param epsilon: SA parameter - the final temparature.
 ##' @param N: SA parameter - the number of maximum annealing times.
-##' @param Elbow_plot: a logical value indicating if an elbow plot of -log10P-values at each module
+##' @param Elbow_plot: a logical value indicating if an elbow plot of -log10(p-value) at each module
 ##' size will be saved.
 ##' @param filePath: the path to save the elbow plot. Default is the current working directory.
 ##' @param seed: permutation seed.
 ##' @return A list containing 5 elements.
-##' minG.ls: it contains the following information for each module size from minM to maxM.
+##' \itemize{
+##' \item minG.ls: contains the following information for each module size from minM to maxM.
 ##' \code{minG} has genes in the module whose average shortest path is optimized. \code{p.mean},
 ##' \code{p.sd} and \code{sp} are p-values, corresponding standard deviation (sd) and the average
 ##' shortest path respectively. \code{null.sp.mean} and \code{null.sp.median} are from permutated
 ##' null distribution. If \code{SA}is selected, the top \code{topG_from_previous} results at each
 ##' module size is stored in \code{top.G}.
-##' bestSize: minG.ls results for the largest module size within 2 sd of the smallest p-value.
-##' mergePMmat: a merged posterior DE mean matrix based on topology nodes,
-##' KEGGpathwayID and data.pair.
+##' \item bestSize: minG.ls results for the largest module size within 2 sd of the smallest p-value.
+##' \item mergePMmat: a merged posterior DE mean matrix based on topology nodes (one node can have
+##' multiple genes).
+##' \item KEGGspecies: the KEGG species abbreviation.
+##' \item KEGGpathwayID: the KEGG pathway ID
+##' \item data.pair: the two study names.
+##' \item module.type: discordant or concordant modules.
+##' }
+##' In addition, the elbow plot of -log10(p-value) for each module size will be saved to the filePath.
 ##' @export
 ##' @examples
 ##' \dontrun{
 ##' #mcmc.merge.list from the merge step (see the example in function 'merge')
-##' res_KEGG_module = KEGG_module(mcmc.merge.list, "hsa04670", data.pair = c("hs","ms"),
+##' res_KEGG_module = KEGG_module(mcmc.merge.list,
+##'                               KEGGspecies="hsa",
+##'                               KEGGpathwayID="04670",
+##'                               data.pair = c("hs","ms"),
 ##'                               gene_type = c("discordant"),
 ##'                               DE_PM_cut = 0.2, minM = 4,maxM = NULL,
 ##'                               B = 1000, cores = 1,
-##'                               search_method = c("SA"),
+##'                               search_method = c("Exhaustive"),
 ##'                               reps_eachM = 1,
 ##'                               topG_from_previous=1,
 ##'                               Tm=10,mu=0.95,epsilon=1e-5,N=1000,
 ##'                               Elbow_plot = T, filePath = getwd())
 ##' }
-KEGG_module = function(mcmc.merge.list, data.pair,
-                       KEGGspecies="hsa", KEGGpathwayID,
-                       KEGG.dataG.topologyG = NULL,
-                       KEGG.dataG.entrezID = NULL,
+KEGG_module = function(mcmc.merge.list,
+                       KEGGspecies="hsa",
+                       KEGGpathwayID,
+                       KEGG.dataGisTopologyG = FALSE,
+                       KEGG.dataG2topologyG = NULL,
+                       data.pair,
                        gene_type = c("discordant","concordant"),
                        DE_PM_cut = 0.2, minM = 4, maxM = NULL,
                        B = 1000, cores = 1,
@@ -67,9 +89,6 @@ KEGG_module = function(mcmc.merge.list, data.pair,
                        Tm0=10,mu=0.95,epsilon=1e-5,N=3000,
                        Elbow_plot = F, filePath = getwd(),
                        seed = 12345, sep = "-"){
-  if(!is.null(KEGG.dataG.entrezID) & !KEGG.dataG.entrezID %in% c("hs","mm","rn","ce","dm")){
-    stop("KEGG.dataG.entrezID has to be one of the 'hs','mm,'rn,'ce','dm'")
-  }
   if(minM < 2){
     stop("minM has to be larger than 1.")
   }
@@ -81,34 +100,74 @@ KEGG_module = function(mcmc.merge.list, data.pair,
   signPM.mat = cbind(apply(dat1,1,mean),apply(dat2,1,mean))
 
   #match data names and gene names on KEGG topology
-  if(is.null(KEGG.dataG.topologyG) & is.null(KEGG.dataG.entrezID)){
+  if(KEGG.dataGisTopologyG == TRUE){
     topologyG = rownames(signPM.mat)
-  }else if(!is.null(KEGG.dataG.topologyG)){
-    topologyG = KEGG.dataG.topologyG[match(rownames(signPM.mat),KEGG.dataG.topologyG[,1]),2]
-  }else if(KEGG.dataG.entrezID == "hs"){
-    map.ls = as.list(as.list(org.Hs.eg.db::org.Hs.egALIAS2EG))
+  }else if(!is.null(KEGG.dataG2topologyG)){
+    topologyG = KEGG.dataG2topologyG[match(rownames(signPM.mat),KEGG.dataG2topologyG[,1]),2]
+    na.index = which(is.na(topologyG))
+    if(length(na.index != 0)){
+      topologyG = topologyG[-na.index]
+      signPM.mat = signPM.mat[-na.index,]
+    }
+
+  }else if(KEGGspecies == "hsa"){
+    map.ls = as.list(org.Hs.eg.db::org.Hs.egALIAS2EG)
     topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
-  }else if(KEGG.dataG.entrezID == "mm"){
-    map.ls = as.list(as.list(org.Mm.eg.db::org.Mm.egALIAS2EG))
+    na.index = sapply(topologyG, is.null)
+    if(sum(na.index) != 0){
+      topologyG = topologyG[!na.index]
+      signPM.mat = signPM.mat[!na.index,]
+    }
+
+  }else if(KEGGspecies == "mmu"){
+    map.ls = as.list(org.Mm.eg.db::org.Mm.egALIAS2EG)
     topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
-  }else if(KEGG.dataG.entrezID == "rn"){
+    na.index = sapply(topologyG, is.null)
+    if(sum(na.index) != 0){
+      topologyG = topologyG[!na.index]
+      signPM.mat = signPM.mat[!na.index,]
+    }
+
+  }else if(KEGGspecies == "rno"){
     map.ls = as.list(as.list(org.Rn.eg.db::org.Rn.egALIAS2EG))
     topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
-  }else if(KEGG.dataG.entrezID == "ce"){
-    map.ls = as.list(as.list(org.Ce.eg.db::org.Ce.egALIAS2EG))
-    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
-  }else if(KEGG.dataG.entrezID == "dm"){
-    map.ls = as.list(as.list(org.Dm.eg.db::org.Dm.egALIAS2EG))
-    topologyG = sapply(rownames(signPM.mat),function(g) map.ls[[g]][[1]])
+    na.index = sapply(topologyG, is.null)
+    if(sum(na.index) != 0){
+      topologyG = topologyG[!na.index]
+      signPM.mat = signPM.mat[!na.index,]
+    }
+
+  }else if(KEGGspecies == "cel"){
+    wormbase = biomaRt::useMart(biomart = "parasite_mart",
+                                host = "https://parasite.wormbase.org",
+                                port = 443)
+    wormbase = useDataset(mart = wormbase, dataset = "wbps_gene")
+    map.mat = getBM(attributes = c("entrezgene_name","wormbase_gseq"),
+                    filters = "entrezgene_name",
+                    values = rownames(signPM.mat),
+                    mart = wormbase)
+    topologyG = paste0("CELE_",map.mat[match(rownames(signPM.mat),map.mat[,"entrezgene_name"]),"wormbase_gseq"])
+
+    na.index = which(topologyG == "CELE_NA")
+    if(length(na.index != 0)){
+      topologyG = topologyG[-na.index]
+      signPM.mat = signPM.mat[-na.index,]
+    }
+  }else if(KEGGspecies == "dme"){
+    map.ls0 = as.list(org.Dm.eg.db::org.Dm.egALIAS2EG)
+    EntrezID = sapply(rownames(signPM.mat),function(g) map.ls0[[g]][[1]])
+    map.ls = as.list(org.Dm.eg.db::org.Dm.egFLYBASECG)
+    topologyG = paste0("Dmel_",sapply(EntrezID,function(g) ifelse(is.null(g), NA, map.ls[[g]][[1]])))
+
+    na.index = which(topologyG == "Dmel_NA")
+    if(length(na.index != 0)){
+      topologyG = topologyG[-na.index]
+      signPM.mat = signPM.mat[-na.index,]
+    }
   }
 
-  na.index = which(is.na(topologyG))
-  if(length(na.index != 0)){
-    topologyG = topologyG[-na.index]
-    signPM.mat = signPM.mat[-na.index,]
-  }
   rownames(signPM.mat) = topologyG
-  adjacent_mat = parseRelation(pathwayID = KEGGpathwayID, keggSpecies = KEGGspecies, sep = sep)##only for human now
+  adjacent_mat = parseRelation(pathwayID = KEGGpathwayID, keggSpecies = KEGGspecies, sep = sep)
   xmlG = row.names(adjacent_mat)[grep(KEGGspecies,row.names(adjacent_mat))]
   xmlG = gsub(paste0(KEGGspecies,":"),"",xmlG)
   xmlG.ls = lapply(xmlG, function(x){
@@ -258,21 +317,21 @@ KEGG_module = function(mcmc.merge.list, data.pair,
 
     df.ratio = data.frame(obs.sp, obs.median.ratio, size = module.size)
 
-    png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_avgSP.png"))
-    p = ggplot(df.ratio, aes(x=size, y=obs.sp)) +
-      geom_line() +
-      geom_point()+
-      labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "module average shortest path value")
-    print(p)
-    dev.off()
+    # png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"_avgSP.png"))
+    # p = ggplot(df.ratio, aes(x=size, y=obs.sp)) +
+    #   geom_line() +
+    #   geom_point()+
+    #   labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "module average shortest path value")
+    # print(p)
+    # dev.off()
 
-    png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"avgSP_ratio_obs_to_median.png"))
-    p = ggplot(df.ratio, aes(x=size, y=obs.median.ratio)) +
-      geom_line() +
-      geom_point() +
-      labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "average module shortest path/median(null average shortest path)")
-    print(p)
-    dev.off()
+    # png(paste0(filePath,"/",KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name,"_",search_method,"avgSP_ratio_obs_to_median.png"))
+    # p = ggplot(df.ratio, aes(x=size, y=obs.median.ratio)) +
+    #   geom_line() +
+    #   geom_point() +
+    #   labs(title = paste0(KEGGpathwayID_spec,"_",gene_type,"_",dat1.name,"_",dat2.name),y = "average module shortest path/median(null average shortest path)")
+    # print(p)
+    # dev.off()
 
   }
   return(list(minG.ls=minG.ls,bestSize = finalSelect,

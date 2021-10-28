@@ -2,25 +2,24 @@
 % Please edit documentation in R/mdsGlobal.R
 \name{mdsGlobal}
 \alias{mdsGlobal}
-\title{Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores}
+\title{Genome-wide MDS plot for multiple pairs}
 \usage{
 mdsGlobal(acs.value, model.name, sep = "_", file)
 }
 \arguments{
-\item{acs.value:}{ACS or ADS scores (ACS is recommended)}
+\item{acs.value:}{pairwise c-scores or d-scores matrix (c-scores is recommended)}
 
 \item{model.name:}{a vector of dataset names.}
 
-\item{sep:}{a character string to separate the data terms.}
+\item{sep:}{a character string to separate the data terms. Please avoid characters appeared in model.name.}
 
 \item{file:}{the output file name.}
 }
 \value{
-A MDS plot of ACS or ADS scores for all DTS's to visualize global distance between each data pair.
+A MDS plot of c-scores or d-scores for all study pairs to visualize global distance between each data pair.
 }
 \description{
-Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores
-The \code{mdsGlobal} is function to generate global MDS plot for multiple pairs
+The \code{mdsGlobal} is function to generate : multidimensional scaling plot for genome-wide c-scores or d-scores.
 }
 \examples{
 \dontrun{

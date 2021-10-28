@@ -17,6 +17,7 @@ Imports:
     parallel,
     devtools,
     KEGGgraph,
+    KEGGREST,
     methods,
     igraph,
     Rcpp,
@@ -24,7 +25,6 @@ Imports:
     org.Hs.eg.db,
     org.Mm.eg.db, 
     org.Rn.eg.db,
-    org.Ce.eg.db, 
     org.Dm.eg.db
 LinkingTo: 
     Rcpp,

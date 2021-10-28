@@ -2,7 +2,7 @@
 % Please edit documentation in R/multi_ACS_ADS_global.R
 \name{multi_ACS_ADS_global}
 \alias{multi_ACS_ADS_global}
-\title{Resemblance analysis for multiple pairs: global ACS, ADS and their permuted p-value}
+\title{Genome-wide congruence analysis for multiple pairs}
 \usage{
 multi_ACS_ADS_global(
   mcmc.merge.list,
@@ -16,20 +16,24 @@ multi_ACS_ADS_global(
 
 \item{dataset.names:}{a vector of dataset names.}
 
-\item{measure:}{three types of ACS/ADS measures to be used: "youden",
+\item{measure:}{three types of scores to be used: "youden",
 "Fmeasure","geo.mean". Default is "Fmeasure".}
 
 \item{B:}{number of permutations.}
 }
 \value{
-Four lists: global ACS values and its permuted p-value.
-global ADS values and its permuted p-value.In addition,
-the four data matrices are written to a folder named "arsGlobal".
+Four lists:
+\itemize{
+\item ACS: genome-wide c-scores.
+\item ACSpvalue: p-values for genome-wide c-scores.
+\item ADS: genome-wide d-scores.
+\item ADSpvalue: p-values for genome-wide d-scores.
+}
+In addition, the four data matrices are written to a folder named "ACS_ADS_Global".
 }
 \description{
-Resemblance analysis for multiple pairs: global ACS, ADS and their permuted p-value
-The \code{multi_ACS_ADS_global} is function to perform resemblance analysis
-for multiple pairs, generating global ACS, ADS and their permuted p-value.
+The \code{multi_ACS_ADS_global} is function to perform congruence analysis
+for multiple study pairs, generating genome-wide c-scores, d-scores and their permuted p-values.
 }
 \examples{
 \dontrun{

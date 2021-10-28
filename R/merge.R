@@ -1,19 +1,18 @@
-##' Merge multiple MCMCout datasets
-##' The \code{merge} is function to merge multiple MCMCout datasets by
-##' matching orthologs
-##' @title Merge multiple MCMCout datasets preparing for cross-species
-##' analysis
+##' The \code{merge} is function to merge multiple MCMCout matrices by
+##' matching orthologs.
+##' @title Merge multiple MCMCout matrices by orthologs
 ##' @param mcmc.list: a list of MCMC output matrices.
-##' @param species: a vector specie names of same length as mcmc.list.
-##' @param ortholog.db: the ortholog object (in R environment)
-##' @param ortholog.file: the ortholog file to be imported
-##' @param reference: the index of the reference data. Merged 
-##' list will be named using the rownames of this data.
-##' @param uniqG: TRUE: only keep the gene with greatest posterior DE signal 
+##' @param species: a vector specie names of same length as mcmc.list indicating
+##' the species of each study.
+##' @param ortholog.db: a data.frame/matrix match orthologs between species.
+##' Column names should be consistent with the species input.
+##' @param reference: the index of the reference MCMC matrix. Merged
+##' list will be named using the rownames of this matrix.
+##' @param uniqG: TRUE: only keep the gene with greatest posterior DE signal
 ##' when multiple matches provided in the orhthologs file. FALSE: keep duplicated
 ##' genes when multiple matches exist. default is TRUE.
 
-##' @return an merged list of multiple MCMCout datasets (with same number of 
+##' @return an merged list of multiple MCMCout datasets (with same number of
 ##' rows and rownames)
 ##' @export
 ##' @examples
@@ -78,7 +77,7 @@
 ##'                   case.label="2", ctrl.label="1")
 ##' ml_pData = summaryDE[,c(3,1)]
 ##' ml_MCMCout = bayes(ml_pData, seed=12345)
-##' 
+##'
 ##' mcmc.list <- list(hb_MCMCout,hs_MCMCout,ht_MCMCout,
 ##' ha_MCMCout,hi_MCMCout,hl_MCMCout,
 ##' mb_MCMCout,ms_MCMCout,mt_MCMCout,
@@ -89,22 +88,23 @@
 ##' ortholog.db = hm_orth, reference=1,uniqG=T)
 ##' }
 
-merge <- function(mcmc.list,species,ortholog.db,ortholog.file=NULL,
+merge <- function(mcmc.list,species,ortholog.db,
                   reference=1,uniqG=T){
+  if(!all(species %in% colnames(ortholog.db))){
+    stop('Found species without corresponding orthologs in the ortholog.db provides.')
+  }
 
+  if(length(species) != length(mcmc.list)){
+    stop('The number of species does not match with the number of mcmc matrices.')
+  }
   M <- length(mcmc.list)
   mcmc.merge.list <- DEgene.merge.list <- vector("list",M)
-  
-  if(is.null(ortholog.file)){
-    ortholog.data <- ortholog.db
-  } else {
-    ortholog.data <- read.csv(ortholog.file,stringsAsFactors = F,header=T) 
-  }
+
   gene.list <- lapply(mcmc.list,rownames)
   DEgene.list <- lapply(mcmc.list,function(x) rownames(x)[attr(x,"DEindex")])
-  
-  match_gene <- orthMatch(gene.list,species,ortholog.data)
-  ref_gene <- match_gene[[reference]] 
+
+  match_gene <- orthMatch(gene.list,species,ortholog.db)
+  ref_gene <- match_gene[[reference]]
   ## match_gene and ref_gene of same dimension
   for(m in 1:M){
     mcmc.merge.list[[m]] <- mcmc.list[[m]][match_gene[[m]],]
@@ -136,19 +136,19 @@ merge <- function(mcmc.list,species,ortholog.db,ortholog.file=NULL,
 }
 
 
-orthMatch <- function(gene.list,species,ortholog.data){
+orthMatch <- function(gene.list,species,ortholog.db){
   M <- length(gene.list)
   index.out <- gene.out <- vector("list",M)
   for(m in 1:M){
     spec <- species[m]
     gene <- gene.list[[m]]
-    index.out[[m]] <- which(ortholog.data[,spec] %in% gene)
+    index.out[[m]] <- which(ortholog.db[,spec] %in% gene)
   }
     common.index <- Reduce(intersect,index.out)#genes in othtolog that appeared in all mcmclists with corresponding species
-  
+
   for(m in 1:M){
     spec <- species[m]
-    gene.out[[m]] <- as.character(ortholog.data[common.index,spec])#otherwise factor used
+    gene.out[[m]] <- as.character(ortholog.db[common.index,spec])#otherwise factor used
   }
 
   return(gene.out)

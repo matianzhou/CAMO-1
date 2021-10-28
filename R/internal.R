@@ -825,8 +825,14 @@ Relocate <- function(a){
 
 
 scatter = function(dat,cluster.assign,sil_cut=0.1){
-  dist.dat = cor(t(dat))
-  sil = silhouette(cluster.assign, dist=(1-dist.dat),diss=T)
+  sd_check = apply(dat, 1, sd)
+
+  if(ncol(dat) == 1|!all(sd_check != 0) ){
+    dist.dat = as.matrix(dist(dat))
+  }else{
+    dist.dat = 1 - cor(t(dat))
+  }
+  sil = silhouette(cluster.assign, dist=dist.dat,diss=T)
 
   new.dist = dist.dat
   cluster.assign2 = cluster.assign
@@ -845,7 +851,7 @@ scatter = function(dat,cluster.assign,sil_cut=0.1){
 
     new.dist<-new.dist[rownames(new.dist)%in%names(cluster.assign2),
                        colnames(new.dist)%in%names(cluster.assign2)]
-    sil <- silhouette(cluster.assign2, dist=(1-new.dist), diss=T)#recalculate silhoutte
+    sil <- silhouette(cluster.assign2, dist=new.dist, diss=T)#recalculate silhoutte
   }
 
   scatter.index = which(!names(cluster.assign)%in%names(cluster.assign2))
@@ -1129,7 +1135,7 @@ ACS_ADS_DE <- function(ds1,ds2,DEevid1,DEevid2,ACSp,ADSp,cluster=NULL,
                                       colour = "white"),
       panel.grid.minor = element_line(linetype = 'solid',
                                       colour = "white"),
-      panel.background = element_rect(fill = "#FFE3E0")) +
+      panel.background = element_rect(fill = "#FFF1E1")) +
     annotate("text", x = (ub-0.15), y = lb, fontface=2,
              label = paste(ds2,sep=""),
              size=8*size.scale,colour="blue",hjust=0.6,vjust=0.1) +
@@ -1155,7 +1161,7 @@ ACS_ADS_DE <- function(ds1,ds2,DEevid1,DEevid2,ACSp,ADSp,cluster=NULL,
                                       colour = "white"),
       panel.grid.minor = element_line(linetype = 'solid',
                                       colour = "white"),
-      panel.background = element_rect(fill = "#DBE7E4")) +
+      panel.background = element_rect(fill = "#EBF5FF")) +
     annotate("text", x = (ub-0.15), y = lb, fontface=2,
              label = paste(ds1,sep=""),
              size=8*size.scale,colour="blue",hjust=0.6,vjust=0.1) +

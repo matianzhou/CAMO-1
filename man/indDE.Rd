@@ -2,29 +2,29 @@
 % Please edit documentation in R/indDE.R
 \name{indDE}
 \alias{indDE}
-\title{Differential expression analysis for individual data.}
+\title{Differential expression analysis for an individual study.}
 \usage{
 indDE(data, group, data.type, case.label, ctrl.label)
 }
 \arguments{
-\item{data:}{the raw expression data.}
+\item{data:}{the gene expression matrix}
 
 \item{group:}{the group label.}
 
-\item{data.type:}{either "microarray" or "RNAseq"}
+\item{data.type:}{"microarray" or "RNAseq". LIMMA is performed for microarray data
+while DEseq2 is performed for RNAseq data.}
 
-\item{case.label:}{label for the case group.}
+\item{case.label:}{the label name for the case group.}
 
-\item{control.label:}{label for the control group.}
+\item{control.label:}{the label name for the control group.}
 }
 \value{
-summary consisting of log fold change, lfc standard error,
-p-value, q-value.
+a summary data frame of log fold change, lfc standard error,
+p-value and q-value.
 }
 \description{
-Differential expression analysis for individual data
 The \code{indDE} is function to perform differential expression
-analysis for individual data
+analysis for an individual study.
 }
 \examples{
 \dontrun{

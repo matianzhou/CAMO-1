@@ -1,15 +1,15 @@
-##' Differential expression analysis for individual data
 ##' The \code{indDE} is function to perform differential expression
-##' analysis for individual data
-##' @title Differential expression analysis for individual data.
-##' @param data: the raw expression data.
+##' analysis for an individual study.
+##' @title Differential expression analysis for an individual study.
+##' @param data: the gene expression matrix
 ##' @param group: the group label.
-##' @param data.type: either "microarray" or "RNAseq"
-##' @param case.label: label for the case group.
-##' @param control.label: label for the control group.
+##' @param data.type: "microarray" or "RNAseq". LIMMA is performed for microarray data
+##' while DEseq2 is performed for RNAseq data.
+##' @param case.label: the label name for the case group.
+##' @param control.label: the label name for the control group.
 
-##' @return summary consisting of log fold change, lfc standard error,
-##' p-value, q-value.
+##' @return a summary data frame of log fold change, lfc standard error,
+##' p-value and q-value.
 ##' @export
 ##' @examples
 ##' \dontrun{

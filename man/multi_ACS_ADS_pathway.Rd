@@ -2,7 +2,7 @@
 % Please edit documentation in R/multi_ACS_ADS_pathway.R
 \name{multi_ACS_ADS_pathway}
 \alias{multi_ACS_ADS_pathway}
-\title{Resemblance analysis for multiple pairs: pathway-specific ACS, ADS and their permuted p-value}
+\title{Pathway level congruence analysis for multiple pairs}
 \usage{
 multi_ACS_ADS_pathway(
   mcmc.merge.list,
@@ -19,7 +19,7 @@ multi_ACS_ADS_pathway(
 
 \item{dataset.names:}{a vector of dataset names.}
 
-\item{measure:}{three types of ACS/ADS measures to be used: "youden",
+\item{measure:}{three types of scores to be used: "youden",
 "Fmeasure","geo.mean". Default is "Fmeasure".}
 
 \item{B:}{number of permutations.}
@@ -29,15 +29,18 @@ multi_ACS_ADS_pathway(
 \item{n.cores:}{if parallel=T, the number of cores to use (mc.cores parameter in 'mclapply' function).}
 }
 \value{
-Four lists: pathway-specific ACS values and its permuted p-value.
-pathway-specific ADS values and its permuted p-value.In addition,
-the four data matrices are written to a folder named "arsPathway".
+Four lists:
+\itemize{
+\item ACS.mat: pathway-specific c-scores.
+\item ACSpvalue.mat: p-values for pathway-specific c-scores.
+\item ADS.mat: pathway-specific d-scores.
+\item ADSpvalue.mat: p-values for pathway-specific d-scores.
+}
+In addition, the four data matrices are written to a folder named "ACS_ADS_Pathway".
 }
 \description{
-Resemblance analysis for multiple pairs: pathway-specific ACS, ADS and their
-permuted p-value
-The \code{multi_ACS_ADS_pathway} is function to perform resemblance analysis
-for multiple pairs, generating pathway-specific ACS, ADS and their permuted p-value.
+The \code{multi_ACS_ADS_pathway} is function to perform congruence analysis
+for multiple pairs, generating pathway-specific c-scores, d-scores and their permuted p-value.
 }
 \examples{
 \dontrun{

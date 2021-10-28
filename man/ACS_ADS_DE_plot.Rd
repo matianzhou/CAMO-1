@@ -2,7 +2,7 @@
 % Please edit documentation in R/ACS_ADS_DE.R
 \name{ACS_ADS_DE_plot}
 \alias{ACS_ADS_DE_plot}
-\title{ACS/ADS scores and DE scores visualization: Plot of pathways average DE posterior mean whose sizes are related to ACS/ADS value.}
+\title{DE evidence visualization with c-scores and d-scores}
 \usage{
 ACS_ADS_DE_plot(
   mcmc.merge.list,
@@ -17,8 +17,8 @@ ACS_ADS_DE_plot(
 \arguments{
 \item{mcmc.merge.list:}{a list of merged MCMC output matrices.}
 
-\item{ACS_ADS_pathway:}{a list of four data frames: pathway specific ACS values, ADS values
-and their permuted p-value (pathway on rows, column being ACS/ADS value or the p-values).}
+\item{ACS_ADS_pathway:}{a list of four data frames: pathway specific c-scores, d-scores
+and their permuted p-value (rows are pathways and columns are studies).}
 
 \item{dataset.names:}{a vector of dataset names.}
 
@@ -29,13 +29,12 @@ and their permuted p-value (pathway on rows, column being ACS/ADS value or the p
 \item{highlight.pathway.index:}{a numeric vector indicating which pathways in the select.pathway.list need to be highlighted.}
 }
 \value{
-A collection of ACS/ADS-DE plots in each data pair. In each individual plot, each pathway is a dot sized by ACS/ADS scores
-and x-axis and y-axis are the average absolute posterior DE values. Pathways size are determined by ACS and ADS in the upper-right trianglar plots
-and the lower-left triangular plots respectively.
+A collection of DE evidence plots for each data pair. In each individual panel, each dot is a pathway sized by p(c-score) (orange in upper right)
+or p(d-score) (blue in lower left).X and y axes are the average absolute DE posterior probabilities.
 }
 \description{
-ACS/ADS scores and DE scores visualization: Plot of pathways average DE posterior mean whose sizes are related to ACS/ADS value.
-The \code{ACS_ADS_DE_plot} is function to visualize ACS/ADS scores and DE scores together in one plot.
+The \code{ACS_ADS_DE_plot} is function to visualize DE evidence and the significance of c-scores and d-scores in one plot. X and y axes represent the average
+DE posterior probabilities in each study pair, size of dots represent the significance of c-scores (upper right) or d-scores (lower left).
 }
 \examples{
 \dontrun{

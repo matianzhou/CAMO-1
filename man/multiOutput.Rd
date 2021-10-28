@@ -10,21 +10,21 @@ multiOutput(
   select.pathway.list,
   ACS_ADS_pathway,
   output = c("clustPathway", "mdsModel", "clustModel", "genePM", "keggView",
-    "reactomeView", "comemberPlot"),
+    "reactomeView"),
   optK = NULL,
   sil_cut = 0.1,
   ADS_cluster = FALSE,
   hashtb = NULL,
-  pathways = NULL,
   keywords_cut = 0.05,
   text.permutation = "all",
   comemberProb_cut = 0.7,
   ViewPairSelect = NULL,
   kegg.species = "hsa",
-  KEGG.genes.entrezID = NULL,
+  KEGG.dataGisEntrezID = FALSE,
+  KEGG.dataG2EntrezID = NULL,
   KEGG.pathID2name = NULL,
   reactome.species = "HSA",
-  Reactome.genes.topologyGtype = NULL,
+  Reactome.dataG2TopologyGtype = NULL,
   Reactome.pathID2name = NULL
 )
 }
@@ -33,23 +33,23 @@ multiOutput(
 
 \item{dataset.names:}{a vector of dataset names.}
 
-\item{select.pathway.list:}{a list of selected pathways (containing gene components).}
+\item{select.pathway.list:}{a list of selected pathways (containing gene components) for clustering/visualization.}
 
-\item{ACS_ADS_pathway:}{a list of four data frames: pathway specific ACS values, ADS values
-and their permuted p-value (pathway on rows, column being ACS/ADS value or the p-values).}
+\item{ACS_ADS_pathway:}{a list of four data frames: pathway-specific c-scores, pathway-specific d-scores
+and their permuted p-value (each row is a pathway and each column is a study).}
 
-\item{output:}{seven options: "clustPathway" (pathway clustering),"comemberPlot" (heatmaps of
-probabilities that each model pair been clustered together in pathways in each pathway cluster),
-"mdsModel"(model MDS plot),"clustModel" (model clustering output), "genePM" (heatmap of gene
-posterior mean), "keggView" (KEGG pathway topology, default is human - hsa, for other species,
-KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.genes.entrezID'),"reactomeView"
+\item{output:}{choose from: "clustPathway" (pathway clustering),
+"mdsModel"(within-pathway MDS plot on studies),
+"clustModel" (within-pathway clustering heatmap),
+"genePM" (within-pathway posterior DE heatmap),
+"keggView" (KEGG pathway topology, default is human - hsa, for other species,
+KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),
+"reactomeView"
 (Reactome pathway topology, default is human - HSA, for other species, Reactome organism name needs
-to be provided as "reactome.species"). In single pair case (2 DTS's), clustering analysis is not
-applicable and only 'genePM','keggView' can be generated. For details, please refer to manuscript.
-"output" cannot be empty.}
+to be provided as "reactome.species").
+Clustering analysis is not applicable when the number of studies is smaller than 3. "output" cannot be empty.}
 
-\item{optK:}{Optimal number of clusters based on pathway clustering diagnostic results.For
-"clustPathway" output only.}
+\item{optK:}{Optimal number of clusters. For "clustPathway" output only.}
 
 \item{sil_cut:}{silhouette index to control scatterness. Larger value indicates tigher cluster and
 more scattered pathways.}
@@ -61,44 +61,49 @@ and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway I
 of meta-analytic integration of multiple transcriptomic studies for consensual and differential pathway
 analysis." Genes 11.6 (2020): 696.}
 
-\item{pathways:}{complete pathway names for text mining.}
-
-\item{keywords_cut:}{keywords above this cut will be shown in text mining spreadsheet output.}
+\item{keywords_cut:}{keywords above this cut will be shown in the text mining spreadsheet output.}
 
 \item{text.permutation:}{select from "all" or "enriched". In text mining, "all" permutates pathways from
 full pathway.list provided while "enriched" permutates from selected pathways. "all" is suitable for
 cross-species comparision while "enriched" is recommended for within-species comparision.}
 
-\item{ViewPairSelect:}{which two datasets to view in KEGG/Reactome topology. All pairs will be
+\item{ViewPairSelect:}{which two datasets to view in the KEGG/Reactome topology plot. All pairs will be
 considered under default (may take a while).}
 
 \item{comemberProb_cut:}{probability below this cut will be colored blue in comembership heatmaps.}
 
 \item{kegg.species:}{KEGG species abbreviation. For "keggView" only. Default is "hsa".}
 
-\item{KEGG.genes.entrezID:}{a data frame which maps gene names in mcmc.merge.list (first column) to
-Entrez IDs (second column). Only required for non-human genes after merging. For "keggView" only.}
+\item{KEGG.dataGisEntrezID:}{whether gene names in data are EntrezID. Default is FALSE.}
+
+\item{KEGG.dataG2EntrezID:}{a data frame which maps gene names in mcmc.merge.list (first column) to
+Entrez IDs (second column). If NULL & KEGG.dataGisEntrezID=F & kegg.species is one of "hsa", "mmu",
+"rno", "cel" or "dme", gene symbols will be automatically mapped to EntrezID by Bioconductor packages
+"org.Hs.eg.db", "org.Mm.eg.db", "org.Rn.eg.db", "org.Ce.eg.db" or org.Dm.eg.db". For "keggView" only.}
 
 \item{KEGG.pathID2name:}{a list where each element is a KEGG pathway name with correponding pathway ID
 as its name. ID will be retrieved from KEGGREST if this is NULL.}
 
 \item{reactome.species:}{Reactome species abbreviation. For "reactomeView" only. Default is "HSA".}
 
-\item{Reactome.genes.topologyGtype:}{a data frame which maps gene names in mcmc.merge.list (first
-column) to gene name types in Reactome topology (second column). For "reactomeView" only.}
+\item{Reactome.dataG2TopologyGtype:}{a data frame which maps gene names in mcmc.merge.list (first
+column) and select.pathway.list to gene name types in Reactome topology (second column). For "reactomeView" only.}
 
 \item{Reactome.pathID2name:}{a list where each element is a Reactome pathway name with correponding
 pathway ID as its name. ID will be retrieved from reactome.db if this is NULL.}
 }
 \value{
-stored output in created folders.
+all figures and tables are stored in created folders in the current directory.
 }
 \description{
 Downstream visualization tools: visualization outputs including overall
 pathway clustering and output for each pathway
-The \code{multiOutput} is function to visualize pathway ACS/ADS results: including overall
-pathway clustering outputs, comembership heatmaps, model MDS plot, model clustering output,
-heatmap of gene posterior mean, kegg pathway topology for each pathway.
+The \code{multiOutput} is function to visualize pathway level c-scores and d-scoresincluding
+pathway clustering results with co-membership heatmaps,
+within-pathway MDS plot (on studies),
+within-pathway clustering heatmap (on studies),
+within-pathway posterior DE heatmap,
+KEGG and Reactome topology plots for each pathway.
 }
 \examples{
 \dontrun{
@@ -114,7 +119,7 @@ results = clustPathway(ACSpvalue.mat)
 
 #2. step2: run multiOutput with pre-selected K
 multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
-           output=c("clustPathway","comemberList","mdsModel","clustModel","genePM","keggView"),
-           hashtb=hashtb,pathways=pathways,optK = K,thres = 0.2)
+           output=c("clustPathway","mdsModel","clustModel","genePM","keggView"),
+           hashtb=hashtb,optK = K,thres = 0.2)
 }
 }

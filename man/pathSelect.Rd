@@ -2,7 +2,7 @@
 % Please edit documentation in R/pathwaySelect.R
 \name{pathSelect}
 \alias{pathSelect}
-\title{Select pathways of interest for pathway-level resemblance analysis}
+\title{Select pathways of interest for pathway-level congruence analysis}
 \usage{
 pathSelect(
   mcmc.merge.list,
@@ -23,22 +23,21 @@ pathSelect(
 
 \item{pathwaysize.upper.cut:}{pathway size upper bound cutoff;}
 
-\item{overlapsize.cut:}{lower bound cutoff of overlap size between genes
+\item{overlapsize.cut:}{the lower bound cutoff of overlap size between genes
 from input data and genes from a pathway.}
 
-\item{med.de.cut:}{lower bound cutoff of median number of DE genes in a
+\item{med.de.cut:}{the lower bound cutoff of median number of DE genes in a
 pathway.}
 
 \item{qfisher.cut:}{fisher q-value cutoff from the meta enrichment
 analysis.}
 }
 \value{
-an vector of selected pathway names.
+a vector of selected pathway names.
 }
 \description{
-Select pathways of interest
 The \code{pathSelect} is function to select pathways of interest for
-pathway-level resemblance analysis
+pathway-level congruence analysis by meta pathway enrichement analysis.
 }
 \examples{
 \dontrun{

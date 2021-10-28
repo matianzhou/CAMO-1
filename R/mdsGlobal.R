@@ -1,11 +1,10 @@
-##' Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores
-##' The \code{mdsGlobal} is function to generate global MDS plot for multiple pairs
-##' @title Global MDS plot for multiple pairs: multidimensional scaling plot for global ACS or ADS scores
-##' @param acs.value: ACS or ADS scores (ACS is recommended)
+##' The \code{mdsGlobal} is function to generate : multidimensional scaling plot for genome-wide c-scores or d-scores.
+##' @title Genome-wide MDS plot for multiple pairs
+##' @param acs.value: pairwise c-scores or d-scores matrix (c-scores is recommended)
 ##' @param model.name: a vector of dataset names.
-##' @param sep: a character string to separate the data terms.
+##' @param sep: a character string to separate the data terms. Please avoid characters appeared in model.name.
 ##' @param file: the output file name.
-##' @return A MDS plot of ACS or ADS scores for all DTS's to visualize global distance between each data pair.
+##' @return A MDS plot of c-scores or d-scores for all study pairs to visualize global distance between each data pair.
 ##' @export
 ##' @examples
 ##' \dontrun{
@@ -21,11 +20,9 @@
 ##' }
 
 mdsGlobal <- function(acs.value,model.name,sep="_",file) {
-  ## plot MDS for global ACS
-  ## model.name is a vector of model names
   M <- length(model.name)
   if(M<=2){
-    stop("At least three DTS's are required for Multidimensional Scaling plot...")
+    stop("At least three studies are required for Multidimensional Scaling plot...")
   }
   distF <- ACStransform(acs.value,theta=7)
   d <- matrix(NA,nrow=M,ncol=M)

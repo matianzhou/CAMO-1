@@ -2,29 +2,21 @@
 % Please edit documentation in R/merge.R
 \name{merge}
 \alias{merge}
-\title{Merge multiple MCMCout datasets preparing for cross-species
-analysis}
+\title{Merge multiple MCMCout matrices by orthologs}
 \usage{
-merge(
-  mcmc.list,
-  species,
-  ortholog.db,
-  ortholog.file = NULL,
-  reference = 1,
-  uniqG = T
-)
+merge(mcmc.list, species, ortholog.db, reference = 1, uniqG = T)
 }
 \arguments{
 \item{mcmc.list:}{a list of MCMC output matrices.}
 
-\item{species:}{a vector specie names of same length as mcmc.list.}
+\item{species:}{a vector specie names of same length as mcmc.list indicating
+the species of each study.}
 
-\item{ortholog.db:}{the ortholog object (in R environment)}
+\item{ortholog.db:}{a data.frame/matrix match orthologs between species.
+Column names should be consistent with the species input.}
 
-\item{ortholog.file:}{the ortholog file to be imported}
-
-\item{reference:}{the index of the reference data. Merged
-list will be named using the rownames of this data.}
+\item{reference:}{the index of the reference MCMC matrix. Merged
+list will be named using the rownames of this matrix.}
 
 \item{uniqG:}{TRUE: only keep the gene with greatest posterior DE signal
 when multiple matches provided in the orhthologs file. FALSE: keep duplicated
@@ -35,9 +27,8 @@ an merged list of multiple MCMCout datasets (with same number of
 rows and rownames)
 }
 \description{
-Merge multiple MCMCout datasets
-The \code{merge} is function to merge multiple MCMCout datasets by
-matching orthologs
+The \code{merge} is function to merge multiple MCMCout matrices by
+matching orthologs.
 }
 \examples{
 \dontrun{

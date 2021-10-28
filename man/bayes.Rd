@@ -2,23 +2,21 @@
 % Please edit documentation in R/bayes.R
 \name{bayes}
 \alias{bayes}
-\title{Run Bayesian analysis for individual pdata}
+\title{Threshold-free Bayesian differential analysis}
 \usage{
 bayes(pData, seed = 12345)
 }
 \arguments{
-\item{pData:}{individual pData. The data matrix has to consist of
-two columns, first being the p-value, second being the log fold change.}
+\item{pData:}{a matrix consist of two columns where first being the p-values and second being the log fold changes.}
 
 \item{seed:}{seed number.}
 }
 \value{
 an MCMC output matrix of signed DE indicator (input for
-resemblance analysis)
+congruence analysis)
 }
 \description{
-Run Bayesian analysis for individual pData
-The \code{bayes} is function to run Bayesian analysis for individual pdata
+The \code{bayes} is function to run Bayesian differential analysis for a single study.
 }
 \examples{
 \dontrun{

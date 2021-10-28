@@ -1,25 +1,28 @@
 ##' Downstream visualization tools: visualization outputs including overall
 ##' pathway clustering and output for each pathway
-##' The \code{multiOutput} is function to visualize pathway ACS/ADS results: including overall
-##' pathway clustering outputs, comembership heatmaps, model MDS plot, model clustering output,
-##' heatmap of gene posterior mean, kegg pathway topology for each pathway.
+##' The \code{multiOutput} is function to visualize pathway level c-scores and d-scoresincluding
+##' pathway clustering results with co-membership heatmaps,
+##' within-pathway MDS plot (on studies),
+##' within-pathway clustering heatmap (on studies),
+##' within-pathway posterior DE heatmap,
+##' KEGG and Reactome topology plots for each pathway.
 ##' @title Downstream visualization tools
 ##' @param mcmc.merge.list: a list of merged MCMC output matrices.
 ##' @param dataset.names: a vector of dataset names.
-##' @param select.pathway.list: a list of selected pathways (containing gene components).
-##' @param ACS_ADS_pathway: a list of four data frames: pathway specific ACS values, ADS values
-##' and their permuted p-value (pathway on rows, column being ACS/ADS value or the p-values).
-##' @param output: seven options: "clustPathway" (pathway clustering),"comemberPlot" (heatmaps of
-##' probabilities that each model pair been clustered together in pathways in each pathway cluster),
-##' "mdsModel"(model MDS plot),"clustModel" (model clustering output), "genePM" (heatmap of gene
-##' posterior mean), "keggView" (KEGG pathway topology, default is human - hsa, for other species,
-##' KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),"reactomeView"
+##' @param select.pathway.list: a list of selected pathways (containing gene components) for clustering/visualization.
+##' @param ACS_ADS_pathway: a list of four data frames: pathway-specific c-scores, pathway-specific d-scores
+##' and their permuted p-value (each row is a pathway and each column is a study).
+##' @param output: choose from: "clustPathway" (pathway clustering),
+##' "mdsModel"(within-pathway MDS plot on studies),
+##' "clustModel" (within-pathway clustering heatmap),
+##' "genePM" (within-pathway posterior DE heatmap),
+##' "keggView" (KEGG pathway topology, default is human - hsa, for other species,
+##' KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),
+##' "reactomeView"
 ##' (Reactome pathway topology, default is human - HSA, for other species, Reactome organism name needs
-##' to be provided as "reactome.species"). In single pair case (2 DTS's), clustering analysis is not
-##' applicable and only 'genePM','keggView' can be generated. For details, please refer to manuscript.
-##' "output" cannot be empty.
-##' @param optK: Optimal number of clusters based on pathway clustering diagnostic results.For
-##' "clustPathway" output only.
+##' to be provided as "reactome.species").
+##' Clustering analysis is not applicable when the number of studies is smaller than 3. "output" cannot be empty.
+##' @param optK: Optimal number of clusters. For "clustPathway" output only.
 ##' @param sil_cut: silhouette index to control scatterness. Larger value indicates tigher cluster and
 ##'  more scattered pathways.
 ##' @param ADS_cluster: whether clustered by ADS in clustPathway. Default is FALSE.
@@ -27,26 +30,28 @@
 ##'  and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework
 ##' of meta-analytic integration of multiple transcriptomic studies for consensual and differential pathway
 ##' analysis." Genes 11.6 (2020): 696.
-##' @param pathways: complete pathway names for text mining.
-##' @param keywords_cut: keywords above this cut will be shown in text mining spreadsheet output.
+##' @param keywords_cut: keywords above this cut will be shown in the text mining spreadsheet output.
 ##' @param text.permutation: select from "all" or "enriched". In text mining, "all" permutates pathways from
 ##' full pathway.list provided while "enriched" permutates from selected pathways. "all" is suitable for
 ##' cross-species comparision while "enriched" is recommended for within-species comparision.
-##' @param ViewPairSelect: which two datasets to view in KEGG/Reactome topology. All pairs will be
+##' @param ViewPairSelect: which two datasets to view in the KEGG/Reactome topology plot. All pairs will be
 ##' considered under default (may take a while).
 ##' @param comemberProb_cut: probability below this cut will be colored blue in comembership heatmaps.
 ##' @param kegg.species: KEGG species abbreviation. For "keggView" only. Default is "hsa".
+##' @param KEGG.dataGisEntrezID: whether gene names in data are EntrezID. Default is FALSE.
 ##' @param KEGG.dataG2EntrezID: a data frame which maps gene names in mcmc.merge.list (first column) to
-##' Entrez IDs (second column). Only required for non-human genes after merging. For "keggView" only.
+##' Entrez IDs (second column). If NULL & KEGG.dataGisEntrezID=F & kegg.species is one of "hsa", "mmu",
+##' "rno", "cel" or "dme", gene symbols will be automatically mapped to EntrezID by Bioconductor packages
+##' "org.Hs.eg.db", "org.Mm.eg.db", "org.Rn.eg.db", "org.Ce.eg.db" or org.Dm.eg.db". For "keggView" only.
 ##' @param KEGG.pathID2name: a list where each element is a KEGG pathway name with correponding pathway ID
 ##' as its name. ID will be retrieved from KEGGREST if this is NULL.
 ##' @param reactome.species: Reactome species abbreviation. For "reactomeView" only. Default is "HSA".
-##' @param EntrezIDReactome.dataG2TopologyGtype: a data frame which maps gene names in mcmc.merge.list (first
-##' column) to gene name types in Reactome topology (second column). For "reactomeView" only.
+##' @param Reactome.dataG2TopologyGtype: a data frame which maps gene names in mcmc.merge.list (first
+##' column) and select.pathway.list to gene name types in Reactome topology (second column). For "reactomeView" only.
 ##' @param Reactome.pathID2name: a list where each element is a Reactome pathway name with correponding
 ##' pathway ID as its name. ID will be retrieved from reactome.db if this is NULL.
 ##'
-##' @return stored output in created folders.
+##' @return all figures and tables are stored in created folders in the current directory.
 ##' @export
 ##' @examples
 ##' \dontrun{
@@ -62,15 +67,15 @@
 ##'
 ##' #2. step2: run multiOutput with pre-selected K
 ##' multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
-##'            output=c("clustPathway","comemberList","mdsModel","clustModel","genePM","keggView"),
-##'            hashtb=hashtb,pathways=pathways,optK = K,thres = 0.2)
+##'            output=c("clustPathway","mdsModel","clustModel","genePM","keggView"),
+##'            hashtb=hashtb,optK = K,thres = 0.2)
 ##' }
 multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
                         output=c("clustPathway","mdsModel","clustModel","genePM","keggView","reactomeView"),
-                        optK=NULL,sil_cut=0.1,ADS_cluster=FALSE,hashtb=NULL,pathways=NULL,keywords_cut=0.05,
+                        optK=NULL,sil_cut=0.1,ADS_cluster=FALSE,hashtb=NULL,keywords_cut=0.05,
                         text.permutation = "all",comemberProb_cut=0.7,
                         ViewPairSelect = NULL,kegg.species="hsa",KEGG.dataGisEntrezID=FALSE,KEGG.dataG2EntrezID=NULL,KEGG.pathID2name=NULL,
-                        reactome.species="HSA",EntrezIDReactome.dataG2TopologyGtype=NULL,Reactome.pathID2name=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
+                        reactome.species="HSA",Reactome.dataG2TopologyGtype=NULL,Reactome.pathID2name=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
 
   ### Multiple pairs output including the following outputs:
   ## pathway clustering (including consensus clust, heatmap, mds, pathway text mining)
@@ -97,7 +102,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
   P <- ncol(AS.mat)
 
   if( (M<=2) & (length(intersect(output,c("clustPathway","mdsModel","clustModel"))) != 0)){
-    print("MDS and clustering are not applicable to 2 DTS's case, removed from 'output'...")
+    print("MDS and clustering are not applicable to 2 studies case, removed from 'output'...")
     output = intersect(output,c('genePM','keggView'))
   }
 
@@ -125,8 +130,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                       cluster.assign=cluster.assign,
                       scatter.index=scatter.index)
     #5. text mining
-    if(!is.null(hashtb) && !is.null(pathways)){
-      textMine(hashtb=hashtb,pathways=pathways,cluster.assign=cluster.assign,scatter.index=scatter.index,thres=keywords_cut,permutation=text.permutation)
+    if(!is.null(hashtb)){
+      textMine(hashtb=hashtb,pathways=hashtb[,"pathway"],cluster.assign=cluster.assign,scatter.index=scatter.index,thres=keywords_cut,permutation=text.permutation)
     }
 
     #6. heatmap
@@ -432,10 +437,10 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
       source_python(system.file("ImageProcess.py", package = "CAMO"))
 
       #genes in mcmc.merge.list, pathway.list should both be the type shown on Reactome topology
-      if(!is.null(EntrezIDReactome.dataG2TopologyGtype)){
+      if(!is.null(Reactome.dataG2TopologyGtype)){
         #match mcmc.merge.list genes
         mcmcG = row.names(mcmc.merge.list[[1]])
-        mcmcG.topology = EntrezIDReactome.dataG2TopologyGtype[match(mcmcG,EntrezIDReactome.dataG2TopologyGtype[,1]),2]
+        mcmcG.topology = Reactome.dataG2TopologyGtype[match(mcmcG,Reactome.dataG2TopologyGtype[,1]),2]
         na.index = which(is.na(mcmcG.topology))
         if(length(na.index) !=0){
           mcmcG.topology.rmna = mcmcG.topology[-na.index]
@@ -452,7 +457,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
         }
         #match pathway genes
         select.pathway.list.topology = lapply(select.pathway.list, function(x){
-          pathwayG.topology = EntrezIDReactome.dataG2TopologyGtype[match(x,EntrezIDReactome.dataG2TopologyGtype[,1]),2]
+          pathwayG.topology = Reactome.dataG2TopologyGtype[match(x,Reactome.dataG2TopologyGtype[,1]),2]
           pathwayG.topology = pathwayG.topology[-which(is.na(pathwayG.topology)|pathwayG.topology == "")]
           return(pathwayG.topology)
         })

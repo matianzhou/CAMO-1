@@ -1,9 +1,8 @@
-##' KEGG pathway topology with highlighted module nodes
 ##' The \code{KEGG_module_topology_plot} is a function to highlght module location on KEGG pathway
 ##' topology.
-##' @title KEGG pathway topology with highlighted module nodes.
+##' @title KEGG topology plot with highlighted module nodes.
 ##' @param res_KEGG_module: a result list from function \code{KEGG_module}.
-##' @param which_to_draw: either a numeric vector indicating which modules to highlight or "all"
+##' @param which_to_draw: either a numeric vector indicating module sizes of interest to highlight or "all"
 ##' which will show all module size scenarios in the res_KEGG_module provided.
 ##' @param filePath: the path to save the elbow plot. Default is the current working directory.
 ##' @return KEGG pathway topology plots with different module highlighted will be saved as .png
@@ -16,6 +15,8 @@
 ##' }
 KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",filePath = getwd()){
   minG.ls = res_KEGG_module$minG.ls
+  module.size = as.numeric(gsub("minG","",names(minG.ls)))
+
   mergePMmat = res_KEGG_module$mergePMmat
   KEGGspecies = res_KEGG_module$KEGGspecies
   KEGGpathwayID = res_KEGG_module$KEGGpathwayID
@@ -25,14 +26,16 @@ KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",fileP
   dat2.name = data.pair[2]
 
   if(which_to_draw[[1]] == "all"){
-    which_to_draw = 1:length(minG.ls)
+    which_to_draw_index = 1:length(minG.ls)
   }else if(!is.numeric(which_to_draw)){
     stop("which_to_draw should be 'all' or a numeric vector")
+  }else{
+    which_to_draw_index = match(which_to_draw,module.size)
   }
   orig.path = getwd()
   setwd(filePath)
-  for (j in 1:length(which_to_draw)) {
-    index = which_to_draw[j]
+  for (j in 1:length(which_to_draw_index)) {
+    index = which_to_draw_index[j]
     topologyG = minG.ls[[index]]$minG
     if(is.null(dim(topologyG))){
       signPM.mat = mergePMmat[topologyG,]

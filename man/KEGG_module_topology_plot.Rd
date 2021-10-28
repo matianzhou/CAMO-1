@@ -2,7 +2,7 @@
 % Please edit documentation in R/KEGG_module_topology_plot.R
 \name{KEGG_module_topology_plot}
 \alias{KEGG_module_topology_plot}
-\title{KEGG pathway topology with highlighted module nodes.}
+\title{KEGG topology plot with highlighted module nodes.}
 \usage{
 KEGG_module_topology_plot(
   res_KEGG_module,
@@ -13,7 +13,7 @@ KEGG_module_topology_plot(
 \arguments{
 \item{res_KEGG_module:}{a result list from function \code{KEGG_module}.}
 
-\item{which_to_draw:}{either a numeric vector indicating which modules to highlight or "all"
+\item{which_to_draw:}{either a numeric vector indicating module sizes of interest to highlight or "all"
 which will show all module size scenarios in the res_KEGG_module provided.}
 
 \item{filePath:}{the path to save the elbow plot. Default is the current working directory.}
@@ -23,7 +23,6 @@ KEGG pathway topology plots with different module highlighted will be saved as .
 files in the filePath provided.
 }
 \description{
-KEGG pathway topology with highlighted module nodes
 The \code{KEGG_module_topology_plot} is a function to highlght module location on KEGG pathway
 topology.
 }

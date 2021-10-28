@@ -1,12 +1,10 @@
-##' Run Bayesian analysis for individual pData 
-##' The \code{bayes} is function to run Bayesian analysis for individual pdata
-##' @title Run Bayesian analysis for individual pdata
-##' @param pData: individual pData. The data matrix has to consist of 
-##' two columns, first being the p-value, second being the log fold change.
-##' @param seed: seed number. 
+##' The \code{bayes} is function to run Bayesian differential analysis for a single study.
+##' @title Threshold-free Bayesian differential analysis
+##' @param pData: a matrix consist of two columns where first being the p-values and second being the log fold changes.
+##' @param seed: seed number.
 
 ##' @return an MCMC output matrix of signed DE indicator (input for
-##' resemblance analysis) 
+##' congruence analysis)
 ##' @export
 ##' @examples
 ##' \dontrun{
@@ -21,12 +19,12 @@
 bayes <- function(pData, seed=12345){
 
   set.seed(seed)
-  
+
 ## deSelect part
-  
+
   DEindex <- deSelect(pData)
-  
-## bayesP part   
+
+## bayesP part
   p <- pData[,1]
   lfc <- pData[,2]
   G <- nrow(pData)
@@ -41,22 +39,22 @@ bayes <- function(pData, seed=12345){
   } else{
     gamma <- G*prop
   }
-  MCMCout <- MCMC(z, iteration, gamma) 
+  MCMCout <- MCMC(z, iteration, gamma)
   signdelta <- MCMCout$Y[,-c(1:burnin)]
-  
+
   signdelta.sub <- signdelta[,seq(1,ncol(signdelta),by=thin)]
   rownames(signdelta.sub) <- names(z)
-  
+
   attr(signdelta.sub,"DEindex") <- DEindex
-  
+
   return(signdelta.sub) #the full sign delta for a dataset (subsample 500)
-}  
+}
 
 
 deSelect <- function(pData, q.cut=0.3,topDE.number = 1000){
   pvalue <- pData[,1]
   qvalue <- p.adjust(pvalue,method="BH")
-  if (is.null(q.cut) || sum(qvalue < q.cut) <=topDE.number ) { 
+  if (is.null(q.cut) || sum(qvalue < q.cut) <=topDE.number ) {
     DEindex <- which(rank(pvalue,ties.method="first") %in% 1:topDE.number)
     names(DEindex) <- names(pvalue)[DEindex]
   } else {
