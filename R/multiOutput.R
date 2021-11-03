@@ -25,7 +25,7 @@
 ##' @param optK: Optimal number of clusters. For "clustPathway" output only.
 ##' @param sil_cut: silhouette index to control scatterness. Larger value indicates tigher cluster and
 ##'  more scattered pathways.
-##' @param ADS_cluster: whether clustered by ADS in clustPathway. Default is FALSE.
+##' @param use_ADS: whether clustered by ADS in clustPathway. Default is FALSE.
 ##' @param hashtb: a flat hash table for text mining. Two prepared hastb table are provided: "hashtb_human"
 ##'  and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework
 ##' of meta-analytic integration of multiple transcriptomic studies for consensual and differential pathway
@@ -72,7 +72,7 @@
 ##' }
 multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
                         output=c("clustPathway","mdsModel","clustModel","genePM","keggView","reactomeView"),
-                        optK=NULL,sil_cut=0.1,ADS_cluster=FALSE,hashtb=NULL,keywords_cut=0.05,
+                        optK=NULL,sil_cut=0.1,use_ADS=FALSE,hashtb=NULL,keywords_cut=0.05,
                         text.permutation = "all",comemberProb_cut=0.7,
                         ViewPairSelect = NULL,kegg.species="hsa",KEGG.dataGisEntrezID=FALSE,KEGG.dataG2EntrezID=NULL,KEGG.pathID2name=NULL,
                         reactome.species="HSA",Reactome.dataG2TopologyGtype=NULL,Reactome.pathID2name=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
@@ -90,7 +90,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
   pathway.name <- names(select.pathway.list)
   K <- length(pathway.name)
 
-  if(ADS_cluster == TRUE){
+  if(use_ADS == TRUE){
     AS.mat = ACS_ADS_pathway$ADS.mat
     ASpvalue.mat = ACS_ADS_pathway$ADSpvalue.mat
   }else{
@@ -131,7 +131,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                       scatter.index=scatter.index)
     #5. text mining
     if(!is.null(hashtb)){
-      textMine(hashtb=hashtb,pathways=hashtb[,"pathway"],cluster.assign=cluster.assign,scatter.index=scatter.index,thres=keywords_cut,permutation=text.permutation)
+      pathways = hashtb[match(1:max(hashtb[,3]),hashtb[,3]),"pathway"]
+      tm_filtered = textMine(hashtb=hashtb,pathways=pathways,cluster.assign=cluster.assign,scatter.index=scatter.index,thres=keywords_cut,permutation=text.permutation)
     }
 
     #6. heatmap
@@ -294,7 +295,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
       #if (!file.exists(dir.path)) dir.create(dir.path)
       #setwd(paste(orig.path,"/",dir.path,sep=""))
 
-      map.ls = as.list(as.list(org.Hs.egALIAS2EG))
+      #map.ls = as.list(as.list(org.Hs.egALIAS2EG))
 
       if(is.null(KEGG.pathID2name)){
         message("Retrieve KEGG pathway IDs from KEGGREST...")
@@ -325,8 +326,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
           for (i in 1:ncol(data.pair)) {
             dat1.name = data.pair[1,i]
             dat2.name = data.pair[2,i]
-            dat1 = mcmc.merge.list[[dat1.name]]
-            dat2 = mcmc.merge.list[[dat2.name]]
+            dat1 = mcmc.merge.list[[match(dat1.name,dataset.names)]]
+            dat2 = mcmc.merge.list[[match(dat2.name,dataset.names)]]
             overlap.genes <- intersect(rownames(dat1),select.pathway.list[[keggk.name]])
             signPM.mat <- cbind(apply(dat1[overlap.genes,],1,mean),
                                 apply(dat2[overlap.genes,],1,mean))
@@ -384,8 +385,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
             parsePathway = KEGGgraph::splitKEGGgroup(parsePathway)
 
             entries = KEGGgraph::nodes(parsePathway)
-            types = sapply(entries, getType)
-            entryNames = as.list(sapply(entries, getName))
+            types = sapply(entries, KEGGgraph::getType)
+            entryNames = as.list(sapply(entries, KEGGgraph::getName))
             if(any(types == "group") || any(types=="map")){
               entryNames = entryNames[!(types %in% c("group","map"))]
             }
@@ -507,7 +508,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
           }
           dir.path = paste0(orig.path,"/reactomeView/", aname1)
           if (!file.exists(dir.path)) dir.create(dir.path,recursive = T)
-          setwd(paste(orig.path,"/",dir.path,sep=""))
+          setwd(dir.path)
           file.copy(from = system.file("pallete.jpeg", package = "CAMO"),
                     to   = getwd())
           for (j in 1:ncol(data.pair)) {
@@ -516,11 +517,9 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
               # aname = select.path.name.intersect2[i]
               dat1.name = data.pair[1,j]
               dat2.name = data.pair[2,j]
-              d1 = dataset.names[dat1.name]
-              d2 = dataset.names[dat2.name]
-              dat1 = mcmc.merge.list.topology[[dat1.name]]
-              dat2 = mcmc.merge.list.topology[[dat2.name]]
-              print(paste0(aID," ",d1," ",d2))
+              dat1 = mcmc.merge.list.topology[[match(dat1.name,dataset.names)]]
+              dat2 = mcmc.merge.list.topology[[match(dat1.name,dataset.names)]]
+              print(paste0(aID," ",dat1.name," ",dat2.name))
               overlap.genes0 = intersect(rownames(dat1),select.pathway.list.topology[[aname]])
               if(length(overlap.genes0) != 0){
                 signPM.mat = cbind(apply(dat1[overlap.genes0,],1,mean),
@@ -532,7 +531,7 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                 CallFromR(signPM=signPM,ReactomePath=reactome.df,datadir=paste0(getwd(),"/"),pathwayID=aID)
 
                 file.rename(paste(aID,"New.jpeg",sep=""),
-                            paste(aID,"_",d1,"_",d2,".jpeg",sep=""))
+                            paste(aID,"_",dat1.name,"_",dat2.name,".jpeg",sep=""))
                 file.remove(paste(aID,".jpeg",sep=""))
                 file.remove(paste(aID,"(1).jpeg",sep=""))
                 file.remove(paste(aID,".sbgn",sep=""))
@@ -995,7 +994,7 @@ genePM <- function(signPM.list, pathway.genes, pathway.name){
 
   pdf(paste(pathway.name,'.pdf',sep=""))
   #jpeg(paste(pathway.name,".jpeg",sep=""),quality = 100)
-  p = pheatmap::pheatmap(mat,cluster_cols = FALSE, clustering_method = "complete",main=pathway.name,
+  p = pheatmap::pheatmap(mat, clustering_method = "complete",main=pathway.name,
                      color = colorRampPalette(c("green","grey","red"))(n = 499),
                      breaks = seq(-1,1,length.out = 500))
   print(p)

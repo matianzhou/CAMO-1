@@ -1065,6 +1065,7 @@ textMine <- function(hashtb,pathways,cluster.assign,scatter.index=NULL,thres=0.0
     pathway.summary <- lapply(1:C, function(x) names(which(cluster.assign==x)))
     writeTextOut(tm_filtered,C,pathway.summary)
   }
+  return(tm_filtered)
 }
 
 ##########################
