@@ -1,5 +1,5 @@
 # CAMO
-Github repository for molecular congruence analysis framework for evaluating model organisms (CAMO)
+Github repository for a molecular congruence analysis framework for evaluating model organisms (CAMO)
 
 
 ## Install This Package from github
