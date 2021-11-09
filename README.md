@@ -2,7 +2,7 @@
 Github repository for a molecular congruence analysis framework for evaluating model organisms (CAMO)
 
 
-## Install This Package from github
+## Install this package from github
 * In R console
 
 ```{R}
