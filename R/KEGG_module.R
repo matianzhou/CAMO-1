@@ -74,7 +74,7 @@
 ##'                               Tm=10,mu=0.95,epsilon=1e-5,N=1000,
 ##'                               Elbow_plot = T, filePath = getwd())
 ##' }
-KEGG_module = function(mcmc.merge.list,
+KEGG_module = function(mcmc.merge.list,dataset.names,
                        KEGGspecies="hsa",
                        KEGGpathwayID,
                        KEGG.dataGisTopologyG = FALSE,
@@ -87,7 +87,7 @@ KEGG_module = function(mcmc.merge.list,
                        reps_eachM = 1,
                        topG_from_previous=1,
                        Tm0=10,mu=0.95,epsilon=1e-5,N=3000,
-                       Elbow_plot = F, filePath = getwd(),
+                       Elbow_plot = T, filePath = getwd(),
                        seed = 12345, sep = "-"){
   if(minM < 2){
     stop("minM has to be larger than 1.")
@@ -95,8 +95,8 @@ KEGG_module = function(mcmc.merge.list,
 
   dat1.name = data.pair[[1]]
   dat2.name = data.pair[[2]]
-  dat1 = mcmc.merge.list[[dat1.name]]
-  dat2 = mcmc.merge.list[[dat2.name]]
+  dat1 = mcmc.merge.list[[match(dat1.name,dataset.names)]]
+  dat2 = mcmc.merge.list[[match(dat2.name,dataset.names)]]
   signPM.mat = cbind(apply(dat1,1,mean),apply(dat2,1,mean))
 
   #match data names and gene names on KEGG topology

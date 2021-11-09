@@ -379,43 +379,46 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
 
             }
 
-            #Average DE genes in each node
-            download.kegg(pathway.id = pathwayID, kegg.species, kegg.dir = ".", file.type="xml")
-            parsePathway = KEGGgraph::parseKGML(paste(getwd(), "/",kegg.species, pathwayID,".xml",sep = ""))
-            parsePathway = KEGGgraph::splitKEGGgroup(parsePathway)
+            if(kegg.species == "hsa"|kegg.species == "mmu"){
+              #Average DE genes in each node
+              #Only applicable to human and mouse because both their XML genes and pathview package use EntrezID
+              download.kegg(pathway.id = pathwayID, kegg.species, kegg.dir = ".", file.type="xml")
+              parsePathway = KEGGgraph::parseKGML(paste(getwd(), "/",kegg.species, pathwayID,".xml",sep = ""))
+              parsePathway = KEGGgraph::splitKEGGgroup(parsePathway)
 
-            entries = KEGGgraph::nodes(parsePathway)
-            types = sapply(entries, KEGGgraph::getType)
-            entryNames = as.list(sapply(entries, KEGGgraph::getName))
-            if(any(types == "group") || any(types=="map")){
-              entryNames = entryNames[!(types %in% c("group","map"))]
-            }
-            entryIds = names(entryNames)
-            entryNames = lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse="_"))
-            names(entryNames) = entryIds
-
-            entryNames.unique = unique(entryNames)
-
-            xmlG = gsub(paste0(kegg.species,":"),"",unlist(entryNames.unique))
-            xmlG.ls = lapply(xmlG, function(x){
-              strsplit(x,"_")[[1]]
-            })
-
-            mergePMls = lapply(1:length(xmlG.ls), function(x){
-              genes = xmlG.ls[[x]]
-              cmG = intersect(rownames(signPM.mat),genes)
-              if(length(cmG) !=0){
-                sub.signPM.mat = matrix(signPM.mat[cmG,],ncol = 2)
-                avgPM = apply(sub.signPM.mat, 2, mean)
-                return(avgPM)
+              entries = KEGGgraph::nodes(parsePathway)
+              types = sapply(entries, KEGGgraph::getType)
+              entryNames = as.list(sapply(entries, KEGGgraph::getName))
+              if(any(types == "group") || any(types=="map")){
+                entryNames = entryNames[!(types %in% c("group","map"))]
               }
-            })
-            names(mergePMls) = xmlG
-            mergePMmat = do.call(rbind,mergePMls)
+              entryIds = names(entryNames)
+              entryNames = lapply(1:length(entryNames), function(i) paste(entryNames[[i]],collapse="_"))
+              names(entryNames) = entryIds
 
-            row.names(mergePMmat) = sapply(row.names(mergePMmat), function(x) strsplit(x,"_")[[1]][1])
+              entryNames.unique = unique(entryNames)
 
-            res = pathview(gene.data = mergePMmat, pathway.id = pathwayID,
+              xmlG = gsub(paste0(kegg.species,":"),"",unlist(entryNames.unique))
+              xmlG.ls = lapply(xmlG, function(x){
+                strsplit(x,"_")[[1]]
+              })
+
+              mergePMls = lapply(1:length(xmlG.ls), function(x){
+                genes = xmlG.ls[[x]]
+                cmG = intersect(rownames(signPM.mat),genes)
+                if(length(cmG) !=0){
+                  sub.signPM.mat = matrix(signPM.mat[cmG,],ncol = 2)
+                  avgPM = apply(sub.signPM.mat, 2, mean)
+                  return(avgPM)
+                }
+              })
+              names(mergePMls) = xmlG
+              mergePMmat = do.call(rbind,mergePMls)
+
+              row.names(mergePMmat) = sapply(row.names(mergePMmat), function(x) strsplit(x,"_")[[1]][1])
+              signPM.mat = mergePMmat
+            }
+            res = pathview(gene.data = signPM.mat, pathway.id = pathwayID,
                            species = kegg.species, out.suffix = "", kegg.native = T,
                            key.pos = "bottomright", map.null=T,cex = 0.15)
 
@@ -501,8 +504,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
           print(paste("reactomeView",i,sep=":"))
           aID = select.path.id.intersect[i]
           aname = select.path.name.intersect2[i]
-          if(grepl("/|:", aname)) {
-            aname1 = gsub("/|:", "", aname)
+          if(grepl("/|:|,", aname)) {
+            aname1 = gsub("/|:|,", "", aname)
           } else {
             aname1 = aname
           }

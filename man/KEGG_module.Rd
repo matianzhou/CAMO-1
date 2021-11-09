@@ -7,6 +7,7 @@ corresponding p-values at different module sizes}
 \usage{
 KEGG_module(
   mcmc.merge.list,
+  dataset.names,
   KEGGspecies = "hsa",
   KEGGpathwayID,
   KEGG.dataGisTopologyG = FALSE,
@@ -25,7 +26,7 @@ KEGG_module(
   mu = 0.95,
   epsilon = 1e-05,
   N = 3000,
-  Elbow_plot = F,
+  Elbow_plot = T,
   filePath = getwd(),
   seed = 12345,
   sep = "-"

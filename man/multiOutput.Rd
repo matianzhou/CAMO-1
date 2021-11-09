@@ -13,7 +13,7 @@ multiOutput(
     "reactomeView"),
   optK = NULL,
   sil_cut = 0.1,
-  ADS_cluster = FALSE,
+  use_ADS = FALSE,
   hashtb = NULL,
   keywords_cut = 0.05,
   text.permutation = "all",
@@ -54,7 +54,7 @@ Clustering analysis is not applicable when the number of studies is smaller than
 \item{sil_cut:}{silhouette index to control scatterness. Larger value indicates tigher cluster and
 more scattered pathways.}
 
-\item{ADS_cluster:}{whether clustered by ADS in clustPathway. Default is FALSE.}
+\item{use_ADS:}{whether clustered by ADS in clustPathway. Default is FALSE.}
 
 \item{hashtb:}{a flat hash table for text mining. Two prepared hastb table are provided: "hashtb_human"
 and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework

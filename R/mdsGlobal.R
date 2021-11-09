@@ -1,6 +1,6 @@
 ##' The \code{mdsGlobal} is function to generate : multidimensional scaling plot for genome-wide c-scores or d-scores.
 ##' @title Genome-wide MDS plot for multiple pairs
-##' @param acs.value: pairwise c-scores or d-scores matrix (c-scores is recommended)
+##' @param acs: pairwise c-scores or d-scores matrix (c-scores is recommended)
 ##' @param model.name: a vector of dataset names.
 ##' @param sep: a character string to separate the data terms. Please avoid characters appeared in model.name.
 ##' @param file: the output file name.
@@ -12,15 +12,13 @@
 ##' #ACS_ADS_global from the multi_ACS_ADS_global step (see the example in 'multi_ACS_ADS_global')
 ##' dataset.names = c("hb","hs","ht","ha","hi","hl",
 ##'                   "mb","ms","mt","ma","mi","ml")
-##' acs.value = c(ACS_ADS_global$ACS)
-##' names(acs.value) = c(sapply(rownames(ACS_ADS_global$ACS),function(x) {
-##' paste(x,rownames(ACS_ADS_global$ACS),sep="_")
-##' }))
-##' mdsGlobal(acs.value,dataset.names,sep="_",file="~/globalMDS.pdf")
+##' mdsGlobal(ACS_ADS_global$ACS,dataset.names,sep="_",file="~/globalMDS.pdf")
 ##' }
 
-mdsGlobal <- function(acs.value,model.name,sep="_",file) {
+mdsGlobal <- function(acs,model.name,sep="_",file) {
   M <- length(model.name)
+  acs.value = c(acs)
+  names(acs.value) = c(sapply(rownames(acs),function(x) paste(x,rownames(acs),sep=sep)))
   if(M<=2){
     stop("At least three studies are required for Multidimensional Scaling plot...")
   }
@@ -53,9 +51,7 @@ mdsGlobal <- function(acs.value,model.name,sep="_",file) {
     xlim(c(-xlimit-0.5,xlimit+0.5)) + ylim(c(-ylimit-0.5,ylimit+0.5)) +
     geom_point(aes(x, y), color = color  ,size=6) +
     geom_text_repel(aes(x, y, label = rownames(d),fontface="bold"),size=8) +
-    theme(plot.title = element_text(size = 15, hjust=0.5,face="bold"),
-          axis.text.x = element_text(size = 12),
-          axis.text.y = element_text(size = 12))
+    theme(text = element_text(face = "bold", color = "black", size=20))
   print(p)
   dev.off()
   return(p)

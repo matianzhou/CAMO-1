@@ -11,7 +11,9 @@ pathSelect(
   pathwaysize.upper.cut = 200,
   overlapsize.cut = 10,
   med.de.cut = 5,
-  qfisher.cut = 0.01
+  min.de.cut = 0,
+  qfisher.cut = 0.05,
+  topPath.indStudy.num = NULL
 )
 }
 \arguments{

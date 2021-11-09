@@ -30,8 +30,9 @@
 pathSelect <- function(mcmc.merge.list,pathway.list,
                        pathwaysize.lower.cut=10,
                        pathwaysize.upper.cut=200,
-                       overlapsize.cut=10,med.de.cut=5,
-                       qfisher.cut = 0.01){
+                       overlapsize.cut=10,med.de.cut=5,min.de.cut=0,
+                       qfisher.cut = 0.05,
+                       topPath.indStudy.num = NULL){
   M <- length(mcmc.merge.list)
   summary.list <- vector("list",M)
   for(m in 1:M){
@@ -47,7 +48,18 @@ pathSelect <- function(mcmc.merge.list,pathway.list,
                         meta.summary$pathway.size < pathwaysize.upper.cut &
                         meta.summary$min.overlap.size >=overlapsize.cut &
                         meta.summary$med.DE.inpathway >=med.de.cut &
+                        meta.summary$min.DE.inpathway >=min.de.cut &
                         meta.summary$q.fisher < qfisher.cut)
+
+  if(!is.null(topPath.indStudy.num)){
+    select.top.pathway <- unique(unlist(lapply(summary.list, function(x){
+      subdatai <- x[x$pathway.size<pathwaysize.upper.cut & x$pathway.size>=pathwaysize.lower.cut,]
+      sig.pathway <- rownames(subdatai)[order(subdatai$p.value,decreasing=F)[1:topPath.indStudy.num]]
+      return(sig.pathway)
+    })))
+    select.ind = intersect(which(row.names(meta.summary) %in% select.top.pathway),select.ind)
+  }
+
   select.pathways <- rownames(meta.summary)[select.ind]
   return(select.pathways)
 }
@@ -110,9 +122,13 @@ metaPath <- function(pathSummary, pathway.list){
                              (sort(x)[M/2]+sort(x)[(M/2+1)])/2
                            } else { sort(x)[(M+1)/2] } ))
 
+  overlapMinDE <- apply(Reduce("cbind", lapply(pathSummary,
+                                               function(x) x$DE.inpathway)), 1, min)
+
   meta.summary <- data.frame(pathway.size= pathwaySize,
                              min.overlap.size= overlapMinSize,
                              med.DE.inpathway = overlapMedDE,
+                             min.DE.inpathway = overlapMinDE,
                              p.fisher=as.numeric(p.fisher),
                              q.fisher=as.numeric(q.fisher))
   rownames(meta.summary) <- pathwayName

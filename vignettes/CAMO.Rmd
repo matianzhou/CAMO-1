@@ -48,7 +48,7 @@ When multiple cohorts are jointly analyzed, c-scores and d-scores are calculated
 * Community detection algorithm to identify concordant or discordant subnetworks for a pair of models based on the topological regulatory information for KEGG pathways. 
 
 
-#Example: human and mouse inflammatory diseases comparison
+#Example1: human and mouse inflammatory diseases comparison
 To demonstrate how to perform congruence analysis of multiple studies using CAMO package, we utilize two human and two mouse inflammatory diseases (Burn and Sepsis), which are part of the data used in case study 1 in the CAMO paper. 
 
 ##1. Construct genome-wide and pathway level c-scores and d-scores
@@ -86,8 +86,7 @@ ms_MCMCout = bayes(ms_pData, seed=12345)#Bayesian differential analysis
 We merge the MCMC matrices by orthologs mapping between human and mouse genes.
 
 ```{r, eval=FALSE}
-mcmc.list = list(hb_MCMCout,hs_MCMCout,
-                  mb_MCMCout,ms_MCMCout)
+mcmc.list = list(hb_MCMCout,hs_MCMCout,mb_MCMCout,ms_MCMCout)
 species = c(rep("human",2), rep("mouse",2))#specify species for each MCMC matrix
 data(hm_orth)##load orthologs file, retrieved from:https://fgr.hms.harvard.edu/diopt
 mcmc.merge.list <- merge(mcmc.list,species = species,
@@ -112,7 +111,7 @@ data(human.pathway.list) #load pathway database, this includes KEGG and Reactome
 select.pathway = pathSelect(mcmc.merge.list,pathway.list,
                              pathwaysize.lower.cut = 5,
                              pathwaysize.upper.cut=200,
-                             overlapsize.cut = 5, med.de.cut =3,
+                             overlapsize.cut = 5, med.de.cut =3,min.de.cut=0,
                              qfisher.cut = 0.05)
 (K = length(select.pathway))
 select.pathway.list = pathway.list[select.pathway]
@@ -132,9 +131,7 @@ save(ACS_ADS_pathway,file="ACS_ADS_pathway.RData")
 ### (i) Genome-wide MDS plot of c-scores 
 We apply the multi-dimensional scaling (MDS) plot using transformation of the genome-wide c-scores as dissimilarity measure provides congruence visualization.The plot will be automatically saved to the current directory.
 ```{r,eval=FALSE}
-acs.value = c(ACS_ADS_global$ACS)
-names(acs.value) = c(sapply(rownames(ACS_ADS_global$ACS),function(x) paste(x,rownames(ACS_ADS_global$ACS),sep="_")))
-mdsGlobal(acs.value,dataset.names,sep="_",file="globalMDS_cscores.pdf")
+mdsGlobal(ACS_ADS_global$ACS,row.names(ACS_ADS_global$ACS),sep="_",file="globalMDS_cscores.pdf")
 ```
 
 
@@ -143,23 +140,23 @@ We first select the optimal number of clusters by consensus clustering. The cons
 
 ```{r,eval=FALSE}
 ACSpvalue.mat = ACS_ADS_pathway$ACSpvalue.mat
-results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="seed 12345",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=12345,plot="png")
+results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="Consensus Clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=12345,plot="png")
 
 ```
 
-Then, we apply the consensus clustering with specified K and allow pathways with small silhouette index to be removed from the current clusters repeatedly until every pathway has a silhouette index above the selected cutoff (0.1). Text mining will then be applied to each tight cluster. Heatmap and MDS of the minus-log-transformed p-values of pathway level c-scores in pair-wise studies will be saved as pdf files. Text minining results will be saved as a spreadsheet. In addition, the co-membership heatmaps summarizing the proportion of significantly concordant pathways within each pathway cluster between each pair of studies will also be saved.   
+Then, we apply the consensus clustering with specified K=4 (suggested from last step) and allow pathways with small silhouette index to be removed from the current clusters repeatedly until every pathway has a silhouette index above the selected cutoff (0.1). Text mining will then be applied to each tight cluster. Heatmap and MDS of the minus-log-transformed p-values of pathway level c-scores in pair-wise studies will be saved as pdf files. Text minining results will be saved as a spreadsheet. In addition, the co-membership heatmaps summarizing the proportion of significantly concordant pathways within each pathway cluster between each pair of studies will also be saved.   
 
 ```{r,eval=FALSE}
-data(hashtb_human) #load the phathway-phrase matrix for text mining
+data(hashtb_human) #load the pathway-phrase matrix for text mining
 set.seed(12345)
 multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,
             ACS_ADS_pathway, output=c("clustPathway"),
-            hashtb=hashtb,pathways=pathways,optK = 4,keywords_cut=0.2,comemberProb_cut=0.75)
+            hashtb=hashtb,optK = 4,keywords_cut=0.2,comemberProb_cut=0.6)
 
 ```
 
 ### (iii) Individual pathway visualizations
-CAMO package provides within pathway visualization tools to visualize the pairwise c-scores/d-scores for individual pathways of interests. For each pathway, "mdsModel" and "clustModel" provide MDS and clustering heatmap for study clusteres, "genePM" provides a gene-wise heatmap of posterior mean of DE evidence for all studies, "keggView" and "reactomeView" generate the topology graph where gene nodes are colored by its concordance/discordance information in a study pair.
+CAMO package provides within pathway visualization tools to visualize the pairwise c-scores/d-scores for individual pathways of interests. For each pathway, "mdsModel" and "clustModel" provide MDS and clustering heatmap for study clusters, "genePM" provides a gene-wise heatmap of posterior mean of DE evidence for all studies, "keggView" and "reactomeView" generate the topology graph where gene nodes are colored by its concordance/discordance information in a study pair.
 
 ```{r,eval=FALSE}
 ##mdsModel, clustModel, genePM
@@ -187,3 +184,210 @@ multiOutput(mcmc.merge.list,dataset.names,select.pathway.list=sub_select.pathway
             Reactome.pathID2name=NULL) #when not provided, reactome.db is used to retrieve pathway ID
 
 ```
+
+### (iv) KEGG local community detection algorithm
+For KEGG pathways, a community detection algorithm is developed for a pair of models to identify concordant or discordant subnetworks based on the topological regulatory information. This is recommended for human pathways (KEGG species = "hsa") because the current knowledge about the the regulatory information in other species is very limited. We demonstrate how to run the local community detection algorithm and generate the KEGG topology plots with highlighted modules on the human pathway "KEGG Leukocyte transendothelial migration" below.
+
+```{r,eval=FALSE}
+
+res_hsa04670 = KEGG_module(mcmc.merge.list, dataset.names,KEGGspecies="hsa",
+                           KEGGpathwayID="04670",data.pair = c("hs","ms"), 
+                           gene_type = c("discordant"),
+                           DE_PM_cut = 0.2, minM = 4,maxM = NULL,
+                           B = 1000, cores = 1,
+                           search_method = c("Exhaustive"),
+                           Elbow_plot = T, filePath = getwd()) #Elbow plot of -log10(p-value) will be saved at the filePath
+res = KEGG_module_topology_plot(res_hsa04670,which_to_draw = 12) #KEGG toplogy with highlighted gene module will be saved locally
+
+
+
+```
+ 
+ 
+#Example 2: worm and fly developmental stages comparison
+In this example, we compare the developmental stages of Caenorhabditis elegans (worm) and Drosophila melanogaster (fruit fly). Please refer to the CAMO paper for detailed data description.
+
+##1. Construct genome-wide and pathway level c-scores and d-scores
+Bayesian differential analysis to derive the empirical distribution of DE indicators in each of the 5 developmental stages of worm and fly. The MCMC step in Bayesian analysis may take a while.
+```{r, eval=FALSE}
+library(CAMO)
+
+load(ce_e0)
+summaryDE <- indDE(data=ce_e0_dat,group=as.factor(ce_e0_group),data.type="microarray",case.label="2", ctrl.label="1")
+ce_e0_pData <- summaryDE[,c(3,1)]
+ce_e0_MCMCout <- bayes(ce_e0_pData, seed=12345)
+save(ce_e0_MCMCout,file="ce_e0_MCMCout.RData")
+
+load(ce_e1)
+summaryDE <- indDE(data=ce_e1_dat,group=as.factor(ce_e1_group),data.type="microarray",case.label="2", ctrl.label="1")
+ce_e1_pData <- summaryDE[,c(3,1)]
+ce_e1_MCMCout <- bayes(ce_e1_pData, seed=12345)
+save(ce_e1_MCMCout,file="ce_e1_MCMCout.RData")
+
+load(ce_e2)
+summaryDE <- indDE(data=ce_e2_dat,group=as.factor(ce_e2_group),data.type="microarray",case.label="2", ctrl.label="1")
+ce_e2_pData <- summaryDE[,c(3,1)]
+ce_e2_MCMCout <- bayes(ce_e2_pData, seed=12345)
+save(ce_e2_MCMCout,file="ce_e2_MCMCout.RData")
+
+load(ce_lar)
+summaryDE <- indDE(data=ce_lar_dat,group=as.factor(ce_lar_group),data.type="microarray",case.label="2", ctrl.label="1")
+ce_lar_pData <- summaryDE[,c(3,1)]
+ce_lar_MCMCout <- bayes(ce_lar_pData, seed=12345)
+save(ce_lar_MCMCout,file="ce_lar_MCMCout.RData")
+
+load(ce_dau)
+summaryDE <- indDE(data=ce_dau_dat,group=as.factor(ce_dau_group),data.type="microarray",case.label="2", ctrl.label="1")
+ce_dau_pData <- summaryDE[,c(3,1)]
+ce_dau_MCMCout <- bayes(ce_dau_pData, seed=12345)
+save(ce_dau_MCMCout,file="ce_dau_MCMCout.RData")
+
+load(dm_e0)
+summaryDE <- indDE(data=dm_e0_dat,group=as.factor(dm_e0_group),data.type="microarray",case.label="2", ctrl.label="1")
+dm_e0_pData <- summaryDE[,c(3,1)]
+dm_e0_MCMCout <- bayes(dm_e0_pData, seed=12345)
+save(dm_e0_MCMCout,file="dm_e0_MCMCout.RData")
+
+load(dm_e1)
+summaryDE <- indDE(data=dm_e1_dat,group=as.factor(dm_e1_group),data.type="microarray",case.label="2", ctrl.label="1")
+dm_e1_pData <- summaryDE[,c(3,1)]
+dm_e1_MCMCout <- bayes(dm_e1_pData, seed=12345)
+save(dm_e1_MCMCout,file="dm_e1_MCMCout.RData")
+
+load(dm_e2)
+summaryDE <- indDE(data=dm_e2_dat,group=as.factor(dm_e2_group),data.type="microarray",case.label="2", ctrl.label="1")
+dm_e2_pData <- summaryDE[,c(3,1)]
+dm_e2_MCMCout <- bayes(dm_e2_pData, seed=12345)
+save(dm_e2_MCMCout,file="dm_e2_MCMCout.RData")
+
+load(dm_lar)
+summaryDE <- indDE(data=dm_lar_dat,group=as.factor(dm_lar_group),data.type="microarray",case.label="2", ctrl.label="1")
+dm_lar_pData <- summaryDE[,c(3,1)]
+dm_lar_MCMCout <- bayes(dm_lar_pData, seed=12345)
+save(dm_lar_MCMCout,file="dm_lar_MCMCout.RData")
+
+load(dm_pup)
+summaryDE <- indDE(data=dm_pup_dat,group=as.factor(dm_pup_group),data.type="microarray",case.label="2", ctrl.label="1")
+dm_pup_pData <- summaryDE[,c(3,1)]
+dm_pup_MCMCout <- bayes(dm_pup_pData, seed=12345)
+save(dm_pup_MCMCout,file="dm_pup_MCMCout.RData")
+
+```
+
+
+Merge the MCMC matrices by orthologs mapping between worm and fly genes:
+
+```{r, eval=FALSE}
+mcmc.list = list(ce_e0_MCMCout,ce_e1_MCMCout,ce_e2_MCMCout,ce_lar_MCMCout,ce_dau_MCMCout,
+                  dm_e0_MCMCout,dm_e1_MCMCout,dm_e2_MCMCout,dm_lar_MCMCout,dm_pup_MCMCout)
+data(cd_orth)
+species = c(rep("ce",5), rep("dm",5))
+mcmc.merge.list <- merge(mcmc.list,species = species,
+                         ortholog.db = cd_orth, reference=1)
+dataset.names = c("ce.e0","ce.e1","ce.e2","ce.lar","ce.dau",
+                  "dm.e0","dm.e1","dm.e2","dm.lar","dm.pup")
+names(mcmc.merge.list) = dataset.names
+save(mcmc.merge.list,file="mcmc.merge.list.RData")
+
+```
+
+Construct genome-wide c-scores and d-scores with permutation test to derive p-values:
+
+```{r,eval=FALSE}
+dataset.names = c("ce.e0","ce.e1","ce.e2","ce.lar","ce.dau",
+                  "dm.e0","dm.e1","dm.e2","dm.lar","dm.pup")
+set.seed(12345)
+ACS_ADS_global = multi_ACS_ADS_global(mcmc.merge.list,dataset.names,
+                                      measure="Fmeasure",B=1000)
+save(ACS_ADS_global,file="ACS_ADS_global.RData")
+
+```
+
+
+Meta-pathway enrichment analysis to select pathways and calculate pathway level c-scores and d-scores:
+
+```{r,eval=FALSE}
+#Select pathways by meta-enrichement-analysis 
+data(worm.pathway.list) #load pathway database, this includes KEGG and Reactome database
+select.pathway0 = pathSelect(mcmc.merge.list,worm.pathway.list,
+                       pathwaysize.lower.cut=3,
+                       pathwaysize.upper.cut=500,
+                       overlapsize.cut=3,med.de.cut=0,min.de.cut=2,
+                       qfisher.cut = 1.01, # relax the requirement of q-values
+                       topPath.indStudy.num = 50)# select genes by gene rankings
+(K = length(select.pathway))
+select.pathway.list = pathway.list[select.pathway]
+save(select.pathway.list,file=paste(WD,"/select_",K,"_pathways.RData",sep=""))
+
+set.seed(12345)
+ACS_ADS_pathway = multi_ACS_ADS_pathway(mcmc.merge.list,dataset.names,
+                                        select.pathway.list,
+                                        measure="Fmeasure",
+                                        B=1000,parallel=F)
+save(ACS_ADS_pathway,file="ACS_ADS_pathway.RData")
+
+```
+
+##2. Downstream visualizations
+
+### (i) Genome-wide MDS plot of c-scores 
+
+```{r,eval=FALSE}
+mdsGlobal(ACS_ADS_global$ACS,row.names(ACS_ADS_global$ACS),sep="_",file="globalMDS_cscores.pdf")
+```
+
+
+### (ii) Consensus tight clustering and text mining
+Select the optimal number of clusters by consensus clustering. The consensus CDF and delta area plot will be automatically saved to the current directory to determing the number of pathway clusters.
+
+```{r,eval=FALSE}
+ACSpvalue.mat = ACS_ADS_pathway$ACSpvalue.mat
+results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="Consensus Clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=12345,plot="png")
+
+```
+
+Consensus tight clustering with specified K=6 to generate clustering heatmap, MDS, text mining results asng co-membership heatmaps:
+
+```{r,eval=FALSE}
+data(hashtb_worm) #load the pathway-phrase matrix for text mining
+set.seed(12345)
+multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,
+            ACS_ADS_pathway, output=c("clustPathway"),
+            hashtb=hashtb,optK = 6,keywords_cut=0.2,comemberProb_cut=0.7)
+
+```
+
+### (iii) Individual pathway visualizations
+
+Generate within pathway clustering heatmap, MDS, gene-wise heatmap, KEGG topology plot and Reactome topology plot:
+
+```{r,eval=FALSE}
+##mdsModel, clustModel, genePM
+sub_select.pathway.list = select.pathway.list[c("KEGG Homologous recombination",
+                                                "KEGG Mismatch repair",
+                                                "Reactome Nucleotide-binding domain, leucine rich repeat containing receptor (NLR) signaling pathways",
+                                                "Reactome PKA activation")]#select pathway of interests
+multiOutput(mcmc.merge.list,dataset.names,select.pathway.list=sub_select.pathway.list,
+            ACS_ADS_pathway, output=c("mdsModel","clustModel","genePM"))
+
+##keggView
+data(Seqname2Entrez_ce)#data genes are in sequence names, need to be mapped to EntrezID for KEGG topology plot
+multiOutput(mcmc.merge.list,dataset.names,select.pathway.list=sub_select.pathway.list,
+            ACS_ADS_pathway, output=c("keggView"),
+            ViewPairSelect = NULL, # will generate for all study pairs automatically
+            kegg.species="cel",
+            KEGG.dataGisEntrezID=FALSE, # data genes are symbols, not entrezID
+            KEGG.dataG2EntrezID=Seqname2Entrez_ce, # a data frame maping data gene names (1st col) to EntrezID (2nd col)
+            KEGG.pathID2name=NULL) #when not provided, KEGGREST is used to retrieve pathway ID
+
+##reactomeView
+data(Seqname2Publicname_ce)#data genes are in sequence names, need to be mapped to public names for Reactome topology plot
+multiOutput(mcmc.merge.list,dataset.names,select.pathway.list=sub_select.pathway.list,
+            ACS_ADS_pathway, output=c("reactomeView"),
+            ViewPairSelect = NULL,# will generate for all study pairs automatically
+            reactome.species="CEL",
+            Reactome.dataG2TopologyGtype=Seqname2Publicname_ce, # a data frame maping data gene names (1st col) to public names (2nd col)
+            Reactome.pathID2name=NULL) #when not provided, reactome.db is used to retrieve pathway ID
+
+```
+

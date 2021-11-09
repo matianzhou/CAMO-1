@@ -4,10 +4,10 @@
 \alias{mdsGlobal}
 \title{Genome-wide MDS plot for multiple pairs}
 \usage{
-mdsGlobal(acs.value, model.name, sep = "_", file)
+mdsGlobal(acs, model.name, sep = "_", file)
 }
 \arguments{
-\item{acs.value:}{pairwise c-scores or d-scores matrix (c-scores is recommended)}
+\item{acs:}{pairwise c-scores or d-scores matrix (c-scores is recommended)}
 
 \item{model.name:}{a vector of dataset names.}
 
@@ -27,10 +27,6 @@ The \code{mdsGlobal} is function to generate : multidimensional scaling plot for
 #ACS_ADS_global from the multi_ACS_ADS_global step (see the example in 'multi_ACS_ADS_global')
 dataset.names = c("hb","hs","ht","ha","hi","hl",
                   "mb","ms","mt","ma","mi","ml")
-acs.value = c(ACS_ADS_global$ACS)
-names(acs.value) = c(sapply(rownames(ACS_ADS_global$ACS),function(x) {
-paste(x,rownames(ACS_ADS_global$ACS),sep="_")
-}))
-mdsGlobal(acs.value,dataset.names,sep="_",file="~/globalMDS.pdf")
+mdsGlobal(ACS_ADS_global$ACS,dataset.names,sep="_",file="~/globalMDS.pdf")
 }
 }
