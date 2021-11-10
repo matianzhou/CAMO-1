@@ -9,8 +9,12 @@
 ##' from input data and genes from a pathway.
 ##' @param med.de.cut: the lower bound cutoff of median number of DE genes in a
 ##' pathway.
+##' @param med.de.cut: the lower bound cutoff of minimum number of DE genes in a
+##' pathway.
 ##' @param qfisher.cut: fisher q-value cutoff from the meta enrichment
 ##' analysis.
+##' @param topPath.indStudy.num: if not NULL, only the union of top pathways is
+##' considered.
 
 ##' @return a vector of selected pathway names.
 ##' @export
@@ -23,7 +27,7 @@
 ##'                             pathwaysize.upper.cut=200,
 ##'                             overlapsize.cut = 5, med.de.cut =3,
 ##'                             qfisher.cut = 0.05)
-##' select.pathway.list <- pathway.list[select.pathway]
+##' select.pathway.list = pathway.list[select.pathway]
 ##' }
 
 

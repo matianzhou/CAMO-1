@@ -4,8 +4,9 @@
 ##' @title KEGG local concordant/discordant module detection algorithm: local module memberships and
 ##' corresponding p-values at different module sizes
 ##' @param mcmc.merge.list: a list of merged MCMC output matrices.
+##' @param dataset.names: a vector of dataset names matched with the mcmc.merge.list.
 ##' @param KEGGspecies: the KEGG species abbreviation. Default is "hsa".
-##' @param KEGGpathwayID: a KEGG pathway ID, do not include organism prefix.
+##' @param KEGGpathwayID: a KEGG pathway ID, not including the organism prefix.
 ##' @param KEGG.dataGisTopologyG: whether gene names in data are same as entries on KEGG topology. If TRUE,
 ##' search topology nodes/entries by data gene names directly. Default is FALSE.
 ##' @param KEGG.dataG2topologyG: a data frame which maps gene names in mcmc.merge.list (first column) to

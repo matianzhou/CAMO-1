@@ -8,8 +8,8 @@
 ##' KEGG and Reactome topology plots for each pathway.
 ##' @title Downstream visualization tools
 ##' @param mcmc.merge.list: a list of merged MCMC output matrices.
-##' @param dataset.names: a vector of dataset names.
-##' @param select.pathway.list: a list of selected pathways (containing gene components) for clustering/visualization.
+##' @param dataset.names: a vector of dataset names matched with the mcmc.merge.list.
+##' @param select.pathway.list: a list of selected pathways (containing gene components) for clustering/visualizations.
 ##' @param ACS_ADS_pathway: a list of four data frames: pathway-specific c-scores, pathway-specific d-scores
 ##' and their permuted p-value (each row is a pathway and each column is a study).
 ##' @param output: choose from: "clustPathway" (pathway clustering),
@@ -17,15 +17,14 @@
 ##' "clustModel" (within-pathway clustering heatmap),
 ##' "genePM" (within-pathway posterior DE heatmap),
 ##' "keggView" (KEGG pathway topology, default is human - hsa, for other species,
-##' KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),
-##' "reactomeView"
-##' (Reactome pathway topology, default is human - HSA, for other species, Reactome organism name needs
+##'  KEGG organism name and gene Entrez ID needs to be provided as 'KEGG.dataG2EntrezID'),
+##' "reactomeView" (Reactome pathway topology, default is human - HSA, for other species, Reactome organism name needs
 ##' to be provided as "reactome.species").
 ##' Clustering analysis is not applicable when the number of studies is smaller than 3. "output" cannot be empty.
 ##' @param optK: Optimal number of clusters. For "clustPathway" output only.
 ##' @param sil_cut: silhouette index to control scatterness. Larger value indicates tigher cluster and
 ##'  more scattered pathways.
-##' @param use_ADS: whether clustered by ADS in clustPathway. Default is FALSE.
+##' @param use_ADS: whether use d-scores for clustering/visualizations. Default is FALSE.
 ##' @param hashtb: a flat hash table for text mining. Two prepared hastb table are provided: "hashtb_human"
 ##'  and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework
 ##' of meta-analytic integration of multiple transcriptomic studies for consensual and differential pathway
@@ -34,9 +33,9 @@
 ##' @param text.permutation: select from "all" or "enriched". In text mining, "all" permutates pathways from
 ##' full pathway.list provided while "enriched" permutates from selected pathways. "all" is suitable for
 ##' cross-species comparision while "enriched" is recommended for within-species comparision.
+##' @param comemberProb_cut: probability below this cut will be colored blue in comembership heatmaps.
 ##' @param ViewPairSelect: which two datasets to view in the KEGG/Reactome topology plot. All pairs will be
 ##' considered under default (may take a while).
-##' @param comemberProb_cut: probability below this cut will be colored blue in comembership heatmaps.
 ##' @param kegg.species: KEGG species abbreviation. For "keggView" only. Default is "hsa".
 ##' @param KEGG.dataGisEntrezID: whether gene names in data are EntrezID. Default is FALSE.
 ##' @param KEGG.dataG2EntrezID: a data frame which maps gene names in mcmc.merge.list (first column) to
@@ -63,12 +62,13 @@
 ##'                   "mb","ms","mt","ma","mi","ml")
 ##' #1. step1: select K by elbow plot from consensus clustering
 ##' ACSpvalue.mat = ACS_ADS_pathway$ACSpvalue.mat
-##' results = clustPathway(ACSpvalue.mat)
+##' results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,pFeature=1,
+##' title="Consensus Clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=12345,plot="png")
 ##'
-##' #2. step2: run multiOutput with pre-selected K
+##' #2. step2: run multiOutput with pre-selected K=4
 ##' multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
 ##'            output=c("clustPathway","mdsModel","clustModel","genePM","keggView"),
-##'            hashtb=hashtb,optK = K,thres = 0.2)
+##'            hashtb=hashtb,optK = 4,keywords_cut=0.2,comemberProb_cut=0.6)
 ##' }
 multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
                         output=c("clustPathway","mdsModel","clustModel","genePM","keggView","reactomeView"),
