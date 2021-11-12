@@ -28,11 +28,14 @@ pathSelect(
 \item{overlapsize.cut:}{the lower bound cutoff of overlap size between genes
 from input data and genes from a pathway.}
 
-\item{med.de.cut:}{the lower bound cutoff of median number of DE genes in a
+\item{med.de.cut:}{the lower bound cutoff of minimum number of DE genes in a
 pathway.}
 
 \item{qfisher.cut:}{fisher q-value cutoff from the meta enrichment
 analysis.}
+
+\item{topPath.indStudy.num:}{if not NULL, only the union of top pathways is
+considered.}
 }
 \value{
 a vector of selected pathway names.
@@ -50,6 +53,6 @@ select.pathway = pathSelect(mcmc.merge.list,pathway.list,
                             pathwaysize.upper.cut=200,
                             overlapsize.cut = 5, med.de.cut =3,
                             qfisher.cut = 0.05)
-select.pathway.list <- pathway.list[select.pathway]
+select.pathway.list = pathway.list[select.pathway]
 }
 }

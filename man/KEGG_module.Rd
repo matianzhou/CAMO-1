@@ -35,9 +35,11 @@ KEGG_module(
 \arguments{
 \item{mcmc.merge.list:}{a list of merged MCMC output matrices.}
 
+\item{dataset.names:}{a vector of dataset names matched with the mcmc.merge.list.}
+
 \item{KEGGspecies:}{the KEGG species abbreviation. Default is "hsa".}
 
-\item{KEGGpathwayID:}{a KEGG pathway ID, do not include organism prefix.}
+\item{KEGGpathwayID:}{a KEGG pathway ID, not including the organism prefix.}
 
 \item{KEGG.dataGisTopologyG:}{whether gene names in data are same as entries on KEGG topology. If TRUE,
 search topology nodes/entries by data gene names directly. Default is FALSE.}

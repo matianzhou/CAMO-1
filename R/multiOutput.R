@@ -62,8 +62,9 @@
 ##'                   "mb","ms","mt","ma","mi","ml")
 ##' #1. step1: select K by elbow plot from consensus clustering
 ##' ACSpvalue.mat = ACS_ADS_pathway$ACSpvalue.mat
-##' results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,pFeature=1,
-##' title="Consensus Clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=12345,plot="png")
+##' results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=0.8,
+##' pFeature=1,title="Consensus Clustering",clusterAlg="hc",innerLinkage="ward.D2",
+##' finalLinkage="ward.D2",seed=12345,plot="png")
 ##'
 ##' #2. step2: run multiOutput with pre-selected K=4
 ##' multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,ACS_ADS_pathway,
@@ -76,11 +77,6 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                         text.permutation = "all",comemberProb_cut=0.7,
                         ViewPairSelect = NULL,kegg.species="hsa",KEGG.dataGisEntrezID=FALSE,KEGG.dataG2EntrezID=NULL,KEGG.pathID2name=NULL,
                         reactome.species="HSA",Reactome.dataG2TopologyGtype=NULL,Reactome.pathID2name=NULL) {#ViewPairSelect:a subset of dataset.names for keggView
-
-  ### Multiple pairs output including the following outputs:
-  ## pathway clustering (including consensus clust, heatmap, mds, pathway text mining)
-  ## & pathway level: per pathway mdsModel plot, clustModel heatmap, gene heatmap,
-  ## pathview (KEGG only)
 
   if(length(output)==0 || is.null(output)){
     stop("at least one type of output has to be chosen")
@@ -101,9 +97,9 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
   M <- length(mcmc.merge.list)
   P <- ncol(AS.mat)
 
-  if( (M<=2) & (length(intersect(output,c("clustPathway","mdsModel","clustModel"))) != 0)){
-    print("MDS and clustering are not applicable to 2 studies case, removed from 'output'...")
-    output = intersect(output,c('genePM','keggView'))
+  if( (M<=2) & (length(intersect(output,c("mdsModel","clustModel"))) != 0)){
+    print("Co-membership heatmap, individual MDS and clustering are not applicable to 2 DTS's case, removed from 'output'...")
+    output = intersect(output,c('clustPathway','genePM','keggView'))
   }
 
   if("clustPathway" %in% output){
@@ -145,92 +141,93 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
                               dataset.names=dataset.names,select.pathway.list=select.pathway.list,
                               cluster.assign=cluster.assign,scatter.index=scatter.index,plot.path=NULL)
 
+    if(M>2){
+      print("Construct comembership matrix...")
+      dir.path <- "comemberPlot"
+      if (!file.exists(paste(orig.path,"/",dir.path,sep=""))) dir.create(paste(orig.path,"/",dir.path,sep=""))
+      setwd(paste(orig.path,"/",dir.path,sep=""))
 
-    print("Construct comembership matrix...")
-    dir.path <- "comemberPlot"
-    if (!file.exists(paste(orig.path,"/",dir.path,sep=""))) dir.create(paste(orig.path,"/",dir.path,sep=""))
-    setwd(paste(orig.path,"/",dir.path,sep=""))
+      model.cluster.result <- vector("list",length=K)
+      names(model.cluster.result) <- rownames(ASpvalue.mat)
 
-    model.cluster.result <- vector("list",length=K)
-    names(model.cluster.result) <- rownames(ASpvalue.mat)
+      for(k in 1:K) {
+        model.cluster.result[[k]] <- SA_algo(unlist(c(ASpvalue.mat[k,])),dataset.names,sep="_")
+      }
+      pathway.cluster.assign = cluster.assign
+      pathway.cluster.assign[scatter.index] = "scatter"
 
-    for(k in 1:K) {
-      model.cluster.result[[k]] <- SA_algo(unlist(c(ASpvalue.mat[k,])),dataset.names,sep="_")
-    }
-    pathway.cluster.assign = cluster.assign
-    pathway.cluster.assign[scatter.index] = "scatter"
+      if(is.null(scatter.index)){
+        Cvec = 1:optK
+      }else{
+        Cvec = c(1:optK,"scatter")
+      }
 
-    if(is.null(scatter.index)){
-      Cvec = 1:optK
-    }else{
-      Cvec = c(1:optK,"scatter")
-    }
-
-    comember.list <- vector("list",length=length(Cvec))
-    for (c in 1:length(Cvec)){
-      select.pathways <- names(pathway.cluster.assign)[pathway.cluster.assign==Cvec[c]]
-      denom <- length(select.pathways)
-      model.result.pathways <- matrix(unlist(model.cluster.result[select.pathways]),nrow=denom,ncol=M,byrow =T )
-      rownames(model.result.pathways) <- select.pathways
-      colnames(model.result.pathways) <- dataset.names
-      comember.mat <- matrix(1,M,M)
-      rownames(comember.mat) <- colnames(comember.mat) <- dataset.names
-      for (i in 1:(M-1)){
-        for (j in (i+1):M){
-          if (denom==1){
-            comember.mat[j,i] = 1
-          }else{
-            model1 <- dataset.names[i]
-            model2 <- dataset.names[j]
-            twomodel.result <- model.result.pathways[,c(model1,model2)]
-            comember.mat[j,i] <- comember.mat[i,j] <- sum(apply(twomodel.result,1,function(x) x[1]==x[2]))/denom
+      comember.list <- vector("list",length=length(Cvec))
+      for (c in 1:length(Cvec)){
+        select.pathways <- names(pathway.cluster.assign)[pathway.cluster.assign==Cvec[c]]
+        denom <- length(select.pathways)
+        model.result.pathways <- matrix(unlist(model.cluster.result[select.pathways]),nrow=denom,ncol=M,byrow =T )
+        rownames(model.result.pathways) <- select.pathways
+        colnames(model.result.pathways) <- dataset.names
+        comember.mat <- matrix(1,M,M)
+        rownames(comember.mat) <- colnames(comember.mat) <- dataset.names
+        for (i in 1:(M-1)){
+          for (j in (i+1):M){
+            if (denom==1){
+              comember.mat[j,i] = 1
+            }else{
+              model1 <- dataset.names[i]
+              model2 <- dataset.names[j]
+              twomodel.result <- model.result.pathways[,c(model1,model2)]
+              comember.mat[j,i] <- comember.mat[i,j] <- sum(apply(twomodel.result,1,function(x) x[1]==x[2]))/denom
+            }
           }
         }
+        comember.list[[c]] <- comember.mat
       }
-      comember.list[[c]] <- comember.mat
-    }
-    names(comember.list) = Cvec
-    save(comember.list,file="comember.list.RData")
+      names(comember.list) = Cvec
+      save(comember.list,file="comember.list.RData")
 
-    #1. thresholding:
-    threshold = comemberProb_cut
+      #1. thresholding:
+      threshold = comemberProb_cut
 
-    mat.thres <- function(mat, threshold){
-      mat[which(mat <= threshold)] <- 0
-      return(mat)
-    }
+      mat.thres <- function(mat, threshold){
+        mat[which(mat <= threshold)] <- 0
+        return(mat)
+      }
 
-    #2. matrix multiplication
+      #2. matrix multiplication
+      for(i in 1:length(comember.list)){
+        mat <- comember.list[[i]]
 
-    for(i in 1:length(comember.list)){
-      mat <- comember.list[[i]]
+        par(font.main=2)
+        par(font.axis=2)
+        par(xpd=FALSE)
 
-      par(font.main=2)
-      par(font.axis=2)
-      par(xpd=FALSE)
+        #thresholding
 
-      #thresholding
+        thres.mat <- mat.thres(mat,threshold)
 
-      thres.mat <- mat.thres(mat,threshold)
-
-      pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
+        pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
+        #jpeg(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".jpeg",sep=""),quality = 100)
 
 
-      hm <- heatmap.3(thres.mat,
-                      main=NULL,
-                      cexCol=1.2,cexRow=1.2,
-                      colsep=1:nrow(mat),
-                      rowsep=1:ncol(mat),
-                      sepwidth=c(0.02, 0.02),  # width of the borders
-                      sepcolor='black',
-                      symbreaks=T,key=T, keysize=1,symkey=F,
-                      dendrogram=c('none'),density.info="none",
-                      trace="none",Rowv=T,Colv=T,symm=F,
-                      #srtCol=50,
-                      col=bluered,breaks=seq(0,1,by=0.01),
-                      margins=c(12,14))
+        hm <- heatmap.3(thres.mat,
+                        main=NULL,
+                        cexCol=1.2,cexRow=1.2,
+                        colsep=1:nrow(mat),
+                        rowsep=1:ncol(mat),
+                        sepwidth=c(0.02, 0.02),  # width of the borders
+                        sepcolor='black',
+                        symbreaks=T,key=T, keysize=1,symkey=F,
+                        dendrogram=c('none'),density.info="none",
+                        trace="none",Rowv=T,Colv=T,symm=F,
+                        #srtCol=50,
+                        col=bluered,breaks=seq(0,1,by=0.01),
+                        margins=c(12,14))
 
-      dev.off()
+        dev.off()
+      }
     }
   }
   setwd(orig.path)
@@ -559,7 +556,15 @@ clustPathway <- function(acsPvalue) {
   #require(ConsensusClusterPlus)
   #set your working dir, automatically save there
 
-  results = ConsensusClusterPlus(d=t(-log10(acsPvalue)),maxK=10,reps=50,pItem=0.7,pFeature=0.7,title="Pathway clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=15213,plot="png")
+  #check if pearson correlation is applicable
+  sd_check = apply(acsPvalue, 1, sd)
+  if(!all(sd_check != 0) | ncol(acsPvalue) == 1){
+    results = ConsensusClusterPlus(d=t(-log10(acsPvalue)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="Pathway clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=15213,plot="png",distance = "euclidean")
+    message("Exist pathways with zero standard deviation. Euclidean distance is used for clustring. Please consider a larger permutaion number if need a pearson distance.")
+
+  }else{
+    results = ConsensusClusterPlus(d=t(-log10(acsPvalue)),maxK=10,reps=50,pItem=0.8,pFeature=1,title="Pathway clustering",clusterAlg="hc",innerLinkage="ward.D2",finalLinkage="ward.D2",seed=15213,plot="png")
+  }
 
   return(results) ## a list of K elements (each k represents number of clusters)
 }
