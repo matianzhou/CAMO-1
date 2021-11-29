@@ -121,17 +121,14 @@ corresponding p-values at different module sizes.
 \examples{
 \dontrun{
 #mcmc.merge.list from the merge step (see the example in function 'merge')
-res_KEGG_module = KEGG_module(mcmc.merge.list,
-                              KEGGspecies="hsa",
-                              KEGGpathwayID="04670",
-                              data.pair = c("hs","ms"),
-                              gene_type = c("discordant"),
-                              DE_PM_cut = 0.2, minM = 4,maxM = NULL,
-                              B = 1000, cores = 1,
-                              search_method = c("Exhaustive"),
-                              reps_eachM = 1,
-                              topG_from_previous=1,
-                              Tm=10,mu=0.95,epsilon=1e-5,N=1000,
-                              Elbow_plot = T, filePath = getwd())
+dataset.names = c("hb","hs","ht","ha","hi","hl",
+                  "mb","ms","mt","ma","mi","ml")
+res_hsa04670 = KEGG_module(mcmc.merge.list, dataset.names,KEGGspecies="hsa",
+                           KEGGpathwayID="04670",data.pair = c("hs","ms"),
+                           gene_type = c("discordant"),
+                           DE_PM_cut = 0.2, minM = 4,maxM = NULL,
+                           B = 1000, cores = 1,
+                           search_method = c("Exhaustive"),
+                           Elbow_plot = T, filePath = getwd())
 }
 }
