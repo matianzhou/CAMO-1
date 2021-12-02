@@ -16,6 +16,7 @@
 KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",filePath = getwd()){
   minG.ls = res_KEGG_module$minG.ls
   module.size = as.numeric(gsub("minG","",names(minG.ls)))
+  module.type = res_KEGG_module$module.type
 
   mergePMmat = res_KEGG_module$mergePMmat
   KEGGspecies = res_KEGG_module$KEGGspecies
@@ -46,7 +47,7 @@ KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",fileP
                      key.pos = "bottomright", map.null=T,cex = 0.15)
 
       file.rename(paste(KEGGpathwayID_spec,"..multi.png",sep=""),
-                  paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],".png",sep=""))
+                  paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],"_",module.type,".png",sep=""))
       file.remove(paste(KEGGpathwayID_spec,".xml",sep=""))
       file.remove(paste(KEGGpathwayID_spec,".png",sep=""))
 
@@ -61,7 +62,7 @@ KEGG_module_topology_plot = function(res_KEGG_module,which_to_draw = "all",fileP
                        species = KEGGspecies, out.suffix = "", kegg.native = T,
                        key.pos = "bottomright", map.null=T,cex = 0.15)
         file.rename(paste(KEGGpathwayID_spec,"..multi.png",sep=""),
-                    paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],"_",i,".png",sep=""))
+                    paste(KEGGpathwayID_spec,"_",dat1.name,"_",dat2.name,"_",names(minG.ls)[index],"_",i,"_",module.type,".png",sep=""))
         file.remove(paste(KEGGpathwayID_spec,".xml",sep=""))
         file.remove(paste(KEGGpathwayID_spec,".png",sep=""))
 

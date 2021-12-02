@@ -147,7 +147,7 @@ results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=
 Then, we apply the consensus clustering with specified K=4 (suggested from last step) and allow pathways with small silhouette index to be removed from the current clusters repeatedly until every pathway has a silhouette index above the selected cutoff (0.1). Text mining will then be applied to each tight cluster. Heatmap and MDS of the minus-log-transformed p-values of pathway level c-scores in pair-wise studies will be saved as pdf files. Text minining results will be saved as a spreadsheet. In addition, the co-membership heatmaps summarizing the proportion of significantly concordant pathways within each pathway cluster between each pair of studies will also be saved.   
 
 ```{r,eval=FALSE}
-data(hashtb_human) #load the pathway-phrase matrix for text mining
+data(hashtb_hsa) #load the pathway-phrase matrix for text mining
 set.seed(12345)
 multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,
             ACS_ADS_pathway, output=c("clustPathway"),
@@ -349,7 +349,7 @@ results = ConsensusClusterPlus(d=t(-log10(ACSpvalue.mat)),maxK=10,reps=50,pItem=
 Consensus tight clustering with specified K=6 to generate clustering heatmap, MDS, text mining results asng co-membership heatmaps:
 
 ```{r,eval=FALSE}
-data(hashtb_worm) #load the pathway-phrase matrix for text mining
+data(hashtb_cel) #load the pathway-phrase matrix for text mining
 set.seed(12345)
 multiOutput(mcmc.merge.list,dataset.names,select.pathway.list,
             ACS_ADS_pathway, output=c("clustPathway"),
