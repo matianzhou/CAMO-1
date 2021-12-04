@@ -55,8 +55,10 @@ more scattered pathways.}
 
 \item{use_ADS:}{whether use d-scores for clustering/visualizations. Default is FALSE.}
 
-\item{hashtb:}{a flat hash table for text mining. Two prepared hastb table are provided: "hashtb_human"
-and "hashtb_worm". Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework
+\item{hashtb:}{a flat noun-pathway table for text mining. Prepared tables from KEGG and Reactome pathway
+descriptions for 5 species "hsa", "mmu", "rno", "cel" and "dme"are provided by \code{data(hashtb_hsa)},
+\code{data(hashtb_mmu)}, \code{data(hashtb_rno)}, \code{data(hashtb_cel)} and \code{data(hashtb_dme)}.
+Please refer to Zeng, Xiangrui, et al. "Comparative Pathway Integrator: a framework
 of meta-analytic integration of multiple transcriptomic studies for consensual and differential pathway
 analysis." Genes 11.6 (2020): 696.}
 
@@ -109,7 +111,7 @@ KEGG and Reactome topology plots for each pathway.
 #mcmc.merge.list from the merge step (see the example in function 'merge')
 #select.pathway.list from the pathSelect step (see the example in function 'pathSelect')
 #ACS_ADS_pathway from the multi_ACS_ADS_pathway step (see example in 'multi_ACS_ADS_pathway')
-data(hashtb_human) #include hashtb & pathways for text mining
+data(hashtb_hsa) #include hashtb & pathways for text mining
 dataset.names = c("hb","hs","ht","ha","hi","hl",
                   "mb","ms","mt","ma","mi","ml")
 #1. step1: select K by elbow plot from consensus clustering

@@ -189,10 +189,26 @@ KEGG_module = function(mcmc.merge.list,dataset.names,
   mergePMmat = do.call(rbind,mergePMls)
 
   #discordant/concordant genes definition
+  #discordant/concordant genes definition
+  if(all(abs(mergePMmat[,1])<=DE_PM_cut | abs(mergePMmat[,2])<=DE_PM_cut)){
+    DE_PM_cut = -1
+    print(paste0("All genes with DE strength greater than the cutoff value for posterior probability of DE are not connected. Removed the cutoff criterion to consider all ",gene_type," genes regardless of its DE stength."))
+  }
   if(gene_type == "discordant"){
-    nodes = unique(rownames(mergePMmat)[which(mergePMmat[,1]*mergePMmat[,2]<0&abs(mergePMmat[,1])>DE_PM_cut&abs(mergePMmat[,2])>DE_PM_cut)])
+
+    if(sum(mergePMmat[,1]*mergePMmat[,2]<0) == 0){
+      stop("No discordant genes are topologically connected. Probably dut to low DE strength in one study. Please check the genePM plot. ")
+    }else{
+      nodes = unique(rownames(mergePMmat)[which(mergePMmat[,1]*mergePMmat[,2]<0&abs(mergePMmat[,1])>DE_PM_cut&abs(mergePMmat[,2])>DE_PM_cut)])
+    }
+
   }else if(gene_type == "concordant"){
-    nodes = unique(rownames(mergePMmat)[which(mergePMmat[,1]*mergePMmat[,2]>0&abs(mergePMmat[,1])>DE_PM_cut&abs(mergePMmat[,2])>DE_PM_cut)])
+
+    if(sum(mergePMmat[,1]*mergePMmat[,2]<0) == 0){
+      stop("No concordant genes are topologically connected. Probably dut to low DE strength in one study. Please check the genePM plot. ")
+    }else{
+      nodes = unique(rownames(mergePMmat)[which(mergePMmat[,1]*mergePMmat[,2]>0&abs(mergePMmat[,1])>DE_PM_cut&abs(mergePMmat[,2])>DE_PM_cut)])
+    }
   }else{
     stop("gene_type has to be 'discordant' or 'concordant'.")
   }

@@ -1213,7 +1213,7 @@ parseRelation <- function(pathwayID, keggSpecies="hsa", binary = T, sep = "-") {
 
   ## if no relation edge, just return
   if(relationNum == 0){
-    print(paste0("There is no relations in ", pathName))
+    print(paste0("There is no topological connected gene nodes in ", pathName))
     return(relation.mat)
   }
 
@@ -1224,14 +1224,13 @@ parseRelation <- function(pathwayID, keggSpecies="hsa", binary = T, sep = "-") {
       relation.mat[entryNames[[entry1[i]]],entryNames[[entry2[i]]]]=1
     }
     else{
-      print(paste("relation not included:",entry1[i], entry2[i], sep=" "))
+      print(paste("connections not included:",entry1[i], entry2[i], sep=" "))
     }
   }
 
   file.remove(xmlFile)
   return(relation.mat)
 }
-
 ##########################
 ###### KEGG module SA ####
 ##########################

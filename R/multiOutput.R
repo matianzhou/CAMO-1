@@ -123,6 +123,15 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
     cluster = list(cluster.assign=cluster.assign,scatter.index=scatter.index)
     save(cluster,file = "cluster_labels.RData")
 
+    cluster.assign2 = cluster.assign[-scatter.index]
+    rmClust = setdiff(unique(cluster.assign),unique(cluster.assign2))
+    if(length(rmClust) != 0){
+      msg = paste0("Cluster ",rmClust," is removed because of scatterness. Please consider a smaller cluster number.")
+      print(msg)
+    }else{
+      msg = NULL
+    }
+
     #4. mds plot
     res <- mdsPathway(acsPvalue=ASpvalue.mat,
                       cluster.assign=cluster.assign,
@@ -155,13 +164,14 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
       for(k in 1:K) {
         model.cluster.result[[k]] <- SA_algo(unlist(c(ASpvalue.mat[k,])),dataset.names,sep="_")
       }
-      pathway.cluster.assign = cluster.assign
-      pathway.cluster.assign[scatter.index] = "scatter"
 
       if(is.null(scatter.index)){
+        pathway.cluster.assign = cluster.assign
         Cvec = 1:optK
       }else{
-        Cvec = c(1:optK,"scatter")
+        pathway.cluster.assign = cluster.assign
+        pathway.cluster.assign[scatter.index] = "scatter"
+        Cvec = sort(unique(pathway.cluster.assign))
       }
 
       comember.list <- vector("list",length=length(Cvec))
@@ -210,8 +220,8 @@ multiOutput <- function(mcmc.merge.list,dataset.names,select.pathway.list,ACS_AD
 
         thres.mat <- mat.thres(mat,threshold)
 
-        pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
-        #jpeg(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".jpeg",sep=""),quality = 100)
+        #pdf(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".pdf",sep=""))
+        jpeg(paste("ComemMat_cluster_",names(comember.list)[i],"_threshold_",threshold,".jpeg",sep=""),quality = 100)
 
 
         hm <- heatmap.3(thres.mat,

@@ -2,7 +2,8 @@
 ##' pathway-level congruence analysis by meta pathway enrichement analysis.
 ##' @title Select pathways of interest for pathway-level congruence analysis
 ##' @param mcmc.merge.list: a list of merged MCMC output matrices.
-##' @param pathway.list: list of pathway database.
+##' @param pathway.list: list of pathway database. This can be any pathway list from external
+##' sources or selected from the contained pathway data in CAMO package.
 ##' @param pathwaysize.lower.cut: pathway size lower bound cutoff;
 ##' @param pathwaysize.upper.cut: pathway size upper bound cutoff;
 ##' @param overlapsize.cut: the lower bound cutoff of overlap size between genes

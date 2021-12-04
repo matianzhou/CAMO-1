@@ -19,7 +19,8 @@ pathSelect(
 \arguments{
 \item{mcmc.merge.list:}{a list of merged MCMC output matrices.}
 
-\item{pathway.list:}{list of pathway database.}
+\item{pathway.list:}{list of pathway database. This can be any pathway list from external
+sources or selected from the contained pathway data in CAMO package.}
 
 \item{pathwaysize.lower.cut:}{pathway size lower bound cutoff;}
 
